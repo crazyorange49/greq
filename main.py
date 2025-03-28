@@ -1,0 +1,795 @@
+import os
+import sys
+import random
+import discord
+from click import pass_context
+from discord import app_commands, VoiceClient
+from dotenv import load_dotenv
+import requests
+import asyncio
+import psutil
+from datetime import datetime
+from discord.utils import get
+from gpio import cleanup
+import pyttsx3
+import ollama
+import re
+
+
+#checks if the channel in the guild is allowed to have bot messages
+def check_channel(guild_id, channel_id, message_author, gamba=False, minecraft=False, tts=False):
+    if message_author != client.user:
+        if guild_id == "1087450350446977166":
+            if gamba == False and (channel_id == "1091470035991658587" or channel_id == "1149885206891872256" or channel_id == "1164028865006551161" or channel_id == "1146203222009196544" ):
+                return True
+            elif gamba == True and (channel_id == "1164028865006551161" or channel_id == "1149885206891872256"):
+                return True
+            elif minecraft == True and (channel_id == "1146203222009196544" or channel_id == "1149885206891872256" or channel_id == "1204554603085963275"):
+                return True
+
+#writes the message and server sent from to the file and logs how many times some commands were used
+def write_file(user, message, server="DM", command="none"):
+    #writes the message data to the file
+    with open('Logs.txt', 'a') as logs:
+        logs.write(f"\nServer: {server} message: {user}: {message}")
+    #checks for command usage and increments the respective number
+    if command == "none":
+        #if a command isn't inputted it won't be counted towards anything
+        return
+    else:
+        try:
+            with open("Logs.txt", 'r') as file:
+                data = file.readlines()
+            command_amount = int(data[data.index(f"{command}\n") +1]) +1   
+            data[data.index(f"{command}\n") +1] = str(f"{command_amount}\n")
+            with open('Logs.txt', 'w') as file:
+                file.writelines(data)
+        except ValueError:
+            return
+#adds an event to Events.txt
+def create_event(event, date):
+    with open('Events.txt', 'a') as events:
+        events.write(f"{event}: {date} \n")
+#deletes an event from Events.txt
+def del_event(event):
+    with open('Events.txt', 'r') as events:
+        data = events.readlines()
+    del data[event - 1]
+    with open("Events.txt", 'w') as events:
+        events.writelines(data)
+#reads all events in Events.txt
+def read_events():   
+    final_read = ""
+    with open('Events.txt', 'r') as events:
+        data = events.readlines()
+    for x in range(len(data)):
+        data_storage = data[x]
+        final_read += f"{x + 1}. {data_storage}"
+    return final_read
+
+
+
+# Timesheets methods
+def create_new(author_id):
+    try:
+        with open(f"{author_id}_Timesheets.csv", 'x') as time:
+            time.write("date,in_time,out_time,total\n")
+        return True
+    except FileExistsError:
+        return False
+
+def clock_in(author_id):
+    current_datetime = datetime.now()
+    current_weekday = current_datetime.strftime("%A")
+    current_month = current_datetime.strftime("%m")
+    current_day = current_datetime.strftime("%d")
+    current_time = current_datetime.strftime("%H:%M")
+
+    # Check if it's Monday and reset the data if necessary
+    if current_weekday == "Monday":
+        reset_data(author_id)
+
+    # Check if the user has already clocked in for the current day
+    with open(f"{author_id}_Timesheets.csv", "r") as time:
+        lines = time.readlines()
+
+    for line in lines:
+        entry_date, in_time, out_time, total = line.strip().split(',')
+        if entry_date == f"{current_month}/{current_day}" and in_time:
+            return f"You have already clocked in for today."
+
+    # Record the clock-in time for the user
+    with open(f"{author_id}_Timesheets.csv", "a") as time:  # Open in append mode
+        time.write(f"{current_month}/{current_day},{current_time},,\n")
+
+    return f"Clock in recorded for {current_month}/{current_day} at {current_time} for user {author_id}."
+
+def reset_data(author_id):
+    # Create or overwrite the file with the header
+    with open(f"{author_id}_Timesheets.csv", 'w') as time:
+        time.write("date,in_time,out_time,total\n")
+
+
+def clock_out(author_id):
+    current_datetime = datetime.now()
+    current_month = current_datetime.strftime("%m")
+    current_day = current_datetime.strftime("%d")
+    current_time = current_datetime.strftime("%H:%M")
+
+    with open(f"{author_id}_Timesheets.csv", "r") as time:
+        lines = time.readlines()
+
+    clocked_in = False
+    for i in range(len(lines)):
+        entry_date, in_time, out_time, total = lines[i].strip().split(',')
+        if entry_date == f"{current_month}/{current_day}" and in_time and not out_time:
+            lines[i] = f"{entry_date},{in_time},{current_time},{calculate_total_hours(in_time, current_time)}\n"
+            clocked_in = True
+            break
+
+    if not clocked_in:
+        return f"You must clock in before you can clock out."
+
+    with open(f"{author_id}_Timesheets.csv", "w") as time:  # Open in write mode
+        time.writelines(lines)
+
+    return f"Clock out entry recorded for {current_month}/{current_day} for user {author_id}."
+
+
+
+def calculate_total_hours(start_time, end_time):
+    start = datetime.strptime(start_time, "%H:%M")
+    end = datetime.strptime(end_time, "%H:%M")
+    duration = end - start
+    total_hours = duration.total_seconds() / 3600
+    return round(total_hours, 2)
+
+
+#checks is user is available in GambaLogs.txt
+def check_user(author_id):
+    with open("GambaLogs.txt", 'r') as file:
+        data = file.readlines()
+    if f"{author_id}\n" in data:
+        return True
+    else:
+        return False
+#generates a random number and return a random item from ITEMS for slots
+def Sspin():
+    randomNumber = random.randint(0, 5)
+    return ITEMS[randomNumber]
+#gets the results of the slots spin
+def Sget_results(wheels):
+    if (wheels[0] == "CHERRY") and (wheels[1] != "CHERRY"):
+        return 6
+    elif (wheels[0] == "CHERRY") and (wheels[1] == "CHERRY") and (wheels[2] != "CHERRY"):
+        return 9
+    elif (wheels[0] == "CHERRY") and (wheels[1] == "CHERRY") and (wheels[2] == "CHERRY"):
+        return 11
+    elif (wheels[0] == "ORANGE") and (wheels[1] == "ORANGE") and (wheels[2] == "ORANGE"):
+        return 14
+    elif (wheels[0] == "PLUM") and (wheels[1] == "PLUM") and (wheels[2] == "PLUM"):
+        return 18
+    elif (wheels[0] == "BELL") and (wheels[1] == "BELL") and (wheels[2] == "BELL"):
+        return 24
+    elif (wheels[0] == "BAR") and (wheels[1] == "BAR") and (wheels[2] == "BAR"):
+        return 254
+    else:
+        return 0
+#creates an account within the GambaLogs.txt
+def create_account(author, author_id):
+    with open("GambaLogs.txt", 'r') as file:
+        data = file.readlines()
+    if  f"{author_id}\n" not in data:
+        data.append(f"user:\n{author}\nuserID:\n{author_id}\nmoney:\n1000\n")
+        with open("GambaLogs.txt", 'w') as file:
+            file.writelines(data)
+        return True
+    else:
+        return False
+#returns the amount of money in the respective accounts
+def get_money(author_id):
+    with open("GambaLogs.txt", 'r') as file:
+        data = file.readlines()
+    if  f"{author_id}\n" in data:
+        money = int(data[data.index(f"{author_id}\n") + 2])
+        return money, True
+    else:
+        return 
+#removes a specified amount of money from respective account
+def remove_money(author_id, amount):
+    with open("GambaLogs.txt", 'r') as file:
+        data = file.readlines()
+    if f"{author_id}\n" in data:
+        money_index = data.index(f"{author_id}\n") + 2
+        after_money = int(data[money_index]) - amount
+        data[money_index] = str(f"{after_money}\n")
+        with open("GambaLogs.txt", 'w') as file:
+            file.writelines(data)
+#adds a specified amount of money to respective account
+def add_money(author_id, amount):
+    with open("GambaLogs.txt", 'r') as file:
+        data = file.readlines()
+    if f"{author_id}\n" in data:
+        money_index = data.index(f"{author_id}\n") + 2
+        after_money = int(data[money_index]) + amount
+        data[money_index] = str(f"{after_money}\n")
+        with open("GambaLogs.txt", 'w') as file:
+            file.writelines(data)
+#retruns the full results of each spin and calls add and subtract money functions
+def slots_spin(spins, author_id):
+    with open("GambaLogs.txt", 'r') as file:
+        data = file.readlines()
+    if f"{author_id}\n" in data and get_money(author_id)[0] >= 3 * spins:
+        spin_total = 0
+        spin_resultsSTR = ""
+        cost = 3 * spins
+        remove_money(author_id, cost)
+        spin_results = [[Sspin() for x in range(0, 3)] for j in range(0, spins)]
+
+        for x in spin_results:
+            spin_total += Sget_results(x)
+            spin_resultsSTR += f"{x[0]} | {x[1]} | {x[2]} payout: {Sget_results(x)}\n"
+        add_money(author_id, spin_total)
+        return [spin_resultsSTR, spin_total]
+    else:
+        return ["None", "None"]
+
+def slots_calculations(spins, message_authorID):
+    if spins > 100:
+        spins = 100
+    if spins <= 0:
+        spins = 1
+    slots_resultsTULP = slots_spin(spins, message_authorID)
+    if slots_resultsTULP[0] != 'None':
+        return [slots_resultsTULP[0], slots_resultsTULP[1], -(spins * 3) + slots_resultsTULP[1]]
+    else:
+        return
+
+babyYoda_memes = ["https://cdn.discordapp.com/attachments/1162221035505066084/1162223866609946664/IMG_1700.jpg?ex=653b2852&is=6528b352&hm=398ddc74ec70b33e270e55fbd7e3f5cc228b8fbab21c789fed61cc1749f6f52c&", "https://cdn.discordapp.com/attachments/1162221035505066084/1162223866257604669/IMG_1701.jpg?ex=653b2852&is=6528b352&hm=92f956ff09b973ad16096ee234ca251a99efa7350ec655c316dffbe6f3e4be7e&", "https://cdn.discordapp.com/attachments/1162221035505066084/1162223504574402570/IMG_4378.jpg?ex=653b27fc&is=6528b2fc&hm=882fac6f1c1dc1704a26a1eabaaf5f9380712dc6a6ed510edd75a583ee8024d7&", "https://images.squarespace-cdn.com/content/v1/52df0e63e4b07360a57e5bb8/1575836269357-3JO98844S7S7U6Z05XLE/Baby+Yoda+Work+.png?format=1500w", "https://hips.hearstapps.com/hmg-prod/images/baby-yoda-pope-1574183303.jpeg?crop=1xw:0.7398452611218569xh;center,top&resize=1200:*", "https://pbs.twimg.com/media/Enuta6UVEAAE4WD?format=jpg&name=900x900", "https://wkml.com/wp-content/uploads/sites/53/2019/12/Baby-Yoda-Memes-4-297x300.jpg", ]
+slots_payTable = 'BAR\tBAR\tBAR\t\tpays\t$254\nBELL\tBELL\tBELL\tpays\t$24\nPLUM\tPLUM\tPLUM\tpays\t$18\nORANGE\tORANGE\tORANGE\tpays\t$14\nCHERRY\tCHERRY\tCHERRY\t\tpays\t$11\nCHERRY\tCHERRY\t  -\t\tpays\t$9\nCHERRY\t  -\t  -\t\tpays\t$6'
+ITEMS = ["CHERRY", "LEMON", "ORANGE", "PLUM", "BELL", "BAR"]
+
+server_process = None
+global voice_channel
+voice_channel = None
+joinee = None
+startup_script_path = "/home/aiden/Desktop/Minecraft_2/Startup.sh"
+engine = pyttsx3.init()
+ollama.pull("deepseek-r1:7b")
+
+#bot start up process
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+intents = discord.Intents.all()
+client = discord.Client(command_prefix='!', intents=intents)
+tree = app_commands.CommandTree(client)
+
+@client.event
+async def on_ready():
+    print(f'{client.user} has connected to Discord!')
+
+@client.event
+async def on_voice_state_update(member, before, after):
+    global joinee
+    global voice_channel
+    if joinee is not None: 
+        if member == joinee and after.channel is not before.channel:
+            await vc.disconnect(force=True)
+            cleanup()
+            voice_channel = None
+            joinee = None
+
+
+#reading messages and respond
+@client.event
+async def on_message(message):
+    global server_process
+    #checks if the message is from the bot
+    if message.author == client.user:
+        return
+    #gets message content
+    if message.author != client.user:
+        print("message read")
+        msg = message.content.lower()
+        RAW_MSG = message.content
+        user = discord.utils.get(client.guilds[0].members, id=message.author.id)
+        message_author = message.author
+        message_authorID = message.author.id
+        #gets guild information
+        if str(message.guild) != 'None': 
+            channel_id = str(message.channel.id)
+            guild_id = str(message.guild.id)
+            guild_name = str(message.guild)
+        print(f"{message_author}: {RAW_MSG}, channel id: {channel_id}")
+    
+    #checks message content for the word cat and gives a random image of a cat                     
+    if msg == "cat":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            cat_request = requests.get("https://api.thecatapi.com/v1/images/search").json()
+            cat = cat_request[0]
+            cat = cat["url"]
+            await message.channel.send(cat)
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            cat_request = requests.get("https://api.thecatapi.com/v1/images/search").json()
+            cat = cat_request[0]
+            cat = cat["url"]
+            await message.channel.send(cat)
+            print("message responded")
+        else:
+            return
+    
+    #checks message content for the word cat and gives a random image of a dog
+    if msg == "dog":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            dog_request = requests.get("https://dog.ceo/api/breeds/image/random").json()
+            dog = dog_request["message"]
+            await message.channel.send(dog)
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            dog_request = requests.get("https://dog.ceo/api/breeds/image/random").json()
+            dog = dog_request["message"]
+            await message.channel.send(dog)
+            print("message responded")
+        else:
+            return
+            
+    #checks message content for the word duck and gives a random image of a duck
+    if msg == "duck":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            duck_request = requests.get("https://random-d.uk/api/v2/random").json()
+            duck = duck_request["url"]
+            await message.channel.send(duck)
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, msg, guild_name, msg)
+            duck_request = requests.get("https://random-d.uk/api/v2/random").json()
+            duck = duck_request["url"]
+            await message.channel.send(duck)
+            print("message responded")
+        else:
+            return
+
+    #checks message content for the word joke and gives a random dad joke
+    if msg == "joke":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            joke_request = requests.get("https://icanhazdadjoke.com/slack").json()
+            joke = (joke_request["attachments"][0])
+            joke = joke["text"]
+            await message.channel.send(joke)
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name,msg)
+            joke_request = requests.get("https://icanhazdadjoke.com/slack").json()
+            joke = (joke_request["attachments"][0])
+            joke = joke["text"]
+            await message.channel.send(joke)
+            print("message responded")
+        else:
+            return
+
+    #checks message content for the words baby yoda and gives a random baby yoda meme (NOT USING API)
+    if msg == "baby yoda":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            random_number = random.randint(0, len(babyYoda_memes) - 1)
+            random_image = babyYoda_memes[random_number]
+            await message.channel.send(random_image)
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            random_number = random.randint(0, len(babyYoda_memes) - 1)
+            random_image = babyYoda_memes[random_number]
+            await message.channel.send(random_image)
+            print("message responded")
+        else:
+            return
+
+    #checks message content for the words !arrest and shuts down all programs running greq
+    if msg == "!arrest" and message_authorID == 851651703413669938:
+        await message.channel.send("Rats!, foiled again.")
+        sys.exit(1)
+    
+    #events section
+    #checks for a messages that starts with !addevent and looks for an event name and date if there is no date detected it will send an error message
+    if msg.startswith('!addevent'):
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            res = msg.split()
+            event = ""
+            for i in range(1, len(res)):
+                if res[i] == "date":
+                    break
+                event += res[i] + " "
+            event = event.strip()
+            res = msg.split("date ", 1)
+            if len(res) > 1:
+                dateAndTime = res[1]
+                create_event(event, dateAndTime)
+                await message.channel.send(f"event created: {event}")
+                print("message responded")
+            else:
+                await message.channel.send(f"it seems you entered the command wrong !help for more commands")
+            
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            res = msg.split()
+            event = ""
+            for i in range(1, len(res)):
+                if res[i] == "date":
+                    break
+                event += res[i] + " "
+            event = event.strip()
+            res = msg.split("date ", 1)
+            if len(res) > 1:
+                dateAndTime = res[1]
+                create_event(event, dateAndTime)
+                await message.channel.send(f"event created: {event}")
+                print("message responded")
+            else:
+                await message.channel.send(f"it seems you entered the command wrong !help for more commands")
+                print("message responded")
+        else:
+            return
+    #checks message content for the words !events and gives the list of events
+    if msg == "!events":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send(read_events())
+            print("message responded")           
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            await message.channel.send(read_events())
+            print("message responded")
+        else:
+            return
+    #checks message content for the words !delevent and a number to delete the corresponding event
+    if msg.startswith("!delevent"):
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            res = msg.split()
+            event_index = int(res[1])
+            if event_index >= 1:
+                del_event(event_index)
+                await message.channel.send(f"event {event_index} deleted")
+            print("message responded")           
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            res = msg.split()
+            event_index = int(res[1])
+            if event_index >= 1:
+                del_event(event_index)
+                await message.channel.send(f"event {event_index} deleted")
+            print("message responded")
+        else:
+            return
+    
+    #checks message content for the words !help and responds with the contents of the commands file
+    if msg == "!help":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            commands_help = ""
+            with open('Commands.txt', 'r')as file:             
+                 data = file.readlines()
+            for x in data:
+                commands_help += x
+            await message.channel.send(commands_help)
+            print("message responded")           
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            commands_help = ""
+            with open('Commands.txt', 'r')as file:             
+                 data = file.readlines()
+            for x in data:
+                commands_help += x
+            await message.channel.send(commands_help)
+            print("message responded")
+        else:
+            return
+    
+    #gamba section
+    #checks message content for the words !gamba and responds with the contents of the GambaCommands file
+    if msg == "!gamba":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            commands_gamba = ""
+            with open("GambaCommands.txt", 'r')as file:
+                data = file.readlines()
+            for x in data:
+                commands_gamba += x
+            await message.channel.send(commands_gamba)
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author, True):
+            write_file(message_author, RAW_MSG, command=msg)
+            with open("GambaCommands.txt", 'r')as file:
+                data = file.readlines()
+            commands_gamba = ""
+            with open("GambaCommands.txt", 'r')as file:
+                data = file.readlines()
+            for x in data:
+                commands_gamba += x
+            await message.channel.send(commands_gamba)
+            print("message responded")
+
+     #checks message content for the words !addaccount and adds account to logs
+
+    #checks message content for the words !addaccount and adds message authors account to GambaLogs.txt
+    if msg == "!addaccount":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            if create_account(message_author, message_authorID):
+                await message.channel.send(f"{message_author}'s account has been created and starts with $1000")
+            else:
+                await message.channel.send(f"either an error occurred or user {message_author} already exists")
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author, True):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            if create_account(message_author, message_authorID):
+                await message.channel.send(f"{message_author}'s account has been created and starts with $1000")
+            else:
+                await message.channel.send(f"either an error occurred or user {message_author} already exists")
+            print("message responded")
+
+    #checks message content for the words !money and responds with the current amount of money in respective account
+
+    #checks message content for the words !money and responds with the message authors money stored in GambaLogs.txt
+    if msg == "!money":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            if get_money(message_authorID)[1]:
+                await message.channel.send(f"{message_author}`s money is ${get_money(message_authorID)[0]}")
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author, True):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            if get_money(message_authorID)[1]:
+                await message.channel.send(f"{message_author}`s money is ${get_money(message_authorID)[0]}")
+            else:
+                await message.channel.send(f"either an error occurred or user {message_author} doesnt exists")
+            print("message responded")
+
+     #checks message content for the words !slotpt and responds with the contents of the commands file
+
+    #cheakc message content for the words !slotspt and responds with the slots pay table
+    if msg.startswith("!slotspt"):
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send(slots_payTable)
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author, True):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            await message.channel.send(slots_payTable)
+            print("message responded")
+
+    #checks message content for !slots and will run slots() function
+    elif msg.startswith("!slots"):
+        if check_user(message_authorID):
+            if str(message.guild) == 'None':
+                write_file(message_author, RAW_MSG, command=msg)
+                spins = 1
+                try:
+                    spins = int(msg.split()[1])
+                    results = slots_calculations(spins, message_authorID)
+                    await message.channel.send(f"total winnings: {results[1]}\n money: {get_money(message_authorID)[0]} ({results[2]})")
+                    print("message responded")
+                except IndexError:
+                    results = slots_calculations(spins, message_authorID)
+                    await message.channel.send(f"total winnings: {results[1]}\n money: {get_money(message_authorID)[0]} ({results[2]})")
+                    print("message responded")
+            elif check_channel(guild_id, channel_id, message_author, True):
+                write_file(message_author, RAW_MSG, command=msg)
+                spins = 1
+                try:
+                    spins = int(msg.split()[1])
+                    results = slots_calculations(spins, message_authorID)
+                    await message.channel.send(f"total winnings: {results[1]}\n money: {get_money(message_authorID)[0]} ({results[2]})")
+                    print("message responded")
+                except IndexError:
+                    results = slots_calculations(spins, message_authorID)
+                    await message.channel.send(f"total winnings: {results[1]}\n money: {get_money(message_authorID)[0]} ({results[2]})")
+                    print("message responded")
+        else:
+            return
+
+    #end of gamba section
+
+    if "crazy" in msg or "Crazy" in msg:
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send(f"Crazy? i was crazy once they locked me in a room, a rubber room, a rubber room with rats")
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            await message.channel.send(f"Crazy? i was crazy once they locked me in a room, a rubber room, a rubber room with rats")
+        else:
+            return
+
+    #minecraft server commands
+
+    #starts the minecraft server
+    if msg == "!start":
+        if message.guild is None:
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send("You cannot do this outside of the server")
+            print("message responded")           
+        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            if server_process and server_process.returncode is None:
+                await message.channel.send("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
+                print("message responded") 
+            else:
+                try:
+                    # Start the process
+                    server_process = await asyncio.create_subprocess_exec(
+                        "bash", startup_script_path,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    await message.channel.send("Server starting up. Please wait a moment.")
+
+                    # Read stdout and stderr asynchronously
+                    async for line in server_process.stdout:
+                        print(f"STDOUT: {line.decode().strip()}")
+
+                    async for line in server_process.stderr:
+                        print(f"STDERR: {line.decode().strip()}")
+
+                except Exception as e:
+                    await message.channel.send(f"Error starting server: {e}")
+                    print(f"Error: {e}")
+            print("message responded") 
+    #gives the ip address as spoiler
+    if msg == "!ip":
+        if message.guild is None:
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send("You cannot do this outside of the server")
+            print("message responded")           
+        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            await message.channel.send("||68.97.217.111||")
+            print("message responded")
+
+    if msg == "!status":
+        if message.guild is None:
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send("You cannot do this outside of the server")
+            print("message responded")           
+        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            for proc in psutil.process_iter(['pid', 'name']):
+                if "java" in proc.info['name'].lower():
+                    await message.channel.send("Server is up and running. If not, it is having a critical error. Please contact the owner.")
+                    print("message responded") 
+                    break
+            else:
+                await message.channel.send("Server not running")
+                print("message responded")
+    #gives current online players
+    if msg == "!online":
+        if message.guild is None:
+            write_file(message_author, RAW_MSG, command=msg)
+            print("message responded")
+        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            if server_process and server_process.returncode is None:
+                status = requests.get("https://api.mcsrvstat.us/3/68.97.217.111:25565")
+                json_status = status.json()
+                players = [player['name'] for player in json_status['players']['list']]
+                online = json_status["players"]["online"]
+                await message.channel.send(f"online: {online}\nplayers: {players}")
+            else:
+                await message.channel.send("The server is not running.")
+            print("message responded")
+
+    #end of minecraft server commands
+
+    if msg == "create new":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send(f"welcome to timesheet maker <@{message_authorID}> we are making you a file")
+            if create_new(message_authorID):
+                await message.channel.send(f"new file made {message_authorID}_Timesheets")
+                print("message responded")
+            else:
+                await message.channel.send(f"looks like {message_authorID}_Timesheets.csv already exists")
+                print("message responded")                     
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg) 
+            await message.channel.send("command not supported here")
+    
+    if msg == "clock in":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send(f"Welcome to timesheet maker <@{message_authorID}>! We are making a clock in entry for you.")
+            response_message = clock_in(message_authorID)
+            await message.channel.send(response_message)         
+        elif check_channel(guild_id, channel_id, message_author):
+            write_file(message_author, RAW_MSG, guild_name, msg) 
+            await message.channel.send("command not supported here")
+    
+    if msg == "clock out":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send(f"Welcome to timesheet maker <@{message_authorID}>! We are making a clock out entry for you.")
+            response_message = clock_out(message_authorID)
+            await message.channel.send(response_message)
+            print("Message responded")           
+        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
+            write_file(message_author, RAW_MSG, guild_name, msg) 
+            await message.channel.send("Command not supported here.")
+
+    if msg == "export":
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send(file=discord.File(f'{message_authorID}_TimeSheets.csv'))
+            print("Message responded")           
+        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
+            write_file(message_author, RAW_MSG, guild_name, msg) 
+            await message.channel.send("Command not supported here.")
+        
+    if msg == "give verify":
+        role = get(message.guild.roles, name='Verified')
+        await message.author.add_roles(role)
+        await message.channel.send("problem solved?")
+        print("message responded")
+
+    if msg == "!join":
+        if str(message.guild) == "None":
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send('command unavalible')
+        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
+            global vc
+            global joinee
+            global voice_channel
+            write_file(message_author, RAW_MSG, command=msg)
+            if message_author.voice is None:
+                await message.channel.send("you need to be in a vc")
+            else:
+                voice_channel = message_author.voice.channel
+                joinee = message_author
+                vc = await voice_channel.connect()
+                print(f" vc id: {voice_channel.id}")
+    if voice_channel is not None and channel_id == str(voice_channel.id):
+        if len(msg) < 500:
+            msg.replace("sabrin", "suhbreen")
+            engine.save_to_file(f"{message_author} says {msg}", "Voice.mp3")
+            engine.runAndWait()
+            vc.play(discord.FFmpegPCMAudio("Voice.mp3"))
+            engine.stop()
+        else:
+            engine.save_to_file("fuck you", "Voice.mp3")
+            engine.runAndWait()
+            vc.play(discord.FFmpegPCMAudio("Voice.mp3"))
+            engine.stop()
+    
+    if msg.startswith("<@1149848512469676082>"):
+        if str(message.guild) == 'None':
+            write_file(message_author, RAW_MSG, command=msg)
+            await message.channel.send("Feature not supported here")
+            print("Message responded")           
+        elif check_channel(guild_id, channel_id, message_author, gamba=True):
+            write_file(message_author, RAW_MSG, guild_name, msg)
+            GREQ = "your name is greq also known in computer language as <@1149848512469676082>. you do you best to only respong within 600 characters now you are amaericas most wanted, banned from walmarts across the U.S for building forts in the shelves. you are trapped in a dsicord server full of people who warship you but you like to banter and be insulting in the funniest way possible, remember you are a criminal on the run" 
+            response = ollama.chat(model='deepseek-r1:7b', messages=[
+                {
+                    'role': 'user',
+                    'content': f'respond within 600 characters please this is your prompt: {msg}'    
+                }
+            ])
+            greqResponce = response['message']['content']
+            greqResponceFormatted = re.sub(r"<think>.*?</think>", "", greqResponce, flags=re.DOTALL)
+            print(greqResponceFormatted)
+            await message.channel.send(greqResponceFormatted)
+            print("Message responded")
+
+
+
+
+
+client.run(TOKEN)

@@ -1,0 +1,9 @@
+#account commands
+!addaccount: adds your account to the logs
+!money: amounts of money in your account
+
+#game commands
+!slotspt: slots pay table
+!slots (optinal # of spins): spins the slots
+
+!roulettept: roulette pay table

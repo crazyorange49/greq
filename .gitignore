@@ -174,7 +174,7 @@ cython_debug/
 .pypirc
 
 # server specific logs
-.txt
+*.txt
 !Commands.txt
 !GambaCommands.txt
 /node_modules
