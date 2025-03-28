@@ -172,3 +172,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# server specific logs
+.txt
+!Commands.txt
+!GambaCommands.txt
+/node_modules
