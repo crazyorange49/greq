@@ -14,6 +14,7 @@ from gpio import cleanup
 import pyttsx3
 import ollama
 import re
+import pandas
 
 
 #checks if the channel in the guild is allowed to have bot messages
@@ -46,6 +47,8 @@ def write_file(user, message, server="DM", command="none"):
                 file.writelines(data)
         except ValueError:
             return
+
+
 #adds an event to Events.txt
 def create_event(event, date):
     with open('Events.txt', 'a') as events:
@@ -67,82 +70,6 @@ def read_events():
         final_read += f"{x + 1}. {data_storage}"
     return final_read
 
-
-
-# Timesheets methods
-def create_new(author_id):
-    try:
-        with open(f"{author_id}_Timesheets.csv", 'x') as time:
-            time.write("date,in_time,out_time,total\n")
-        return True
-    except FileExistsError:
-        return False
-
-def clock_in(author_id):
-    current_datetime = datetime.now()
-    current_weekday = current_datetime.strftime("%A")
-    current_month = current_datetime.strftime("%m")
-    current_day = current_datetime.strftime("%d")
-    current_time = current_datetime.strftime("%H:%M")
-
-    # Check if it's Monday and reset the data if necessary
-    if current_weekday == "Monday":
-        reset_data(author_id)
-
-    # Check if the user has already clocked in for the current day
-    with open(f"{author_id}_Timesheets.csv", "r") as time:
-        lines = time.readlines()
-
-    for line in lines:
-        entry_date, in_time, out_time, total = line.strip().split(',')
-        if entry_date == f"{current_month}/{current_day}" and in_time:
-            return f"You have already clocked in for today."
-
-    # Record the clock-in time for the user
-    with open(f"{author_id}_Timesheets.csv", "a") as time:  # Open in append mode
-        time.write(f"{current_month}/{current_day},{current_time},,\n")
-
-    return f"Clock in recorded for {current_month}/{current_day} at {current_time} for user {author_id}."
-
-def reset_data(author_id):
-    # Create or overwrite the file with the header
-    with open(f"{author_id}_Timesheets.csv", 'w') as time:
-        time.write("date,in_time,out_time,total\n")
-
-
-def clock_out(author_id):
-    current_datetime = datetime.now()
-    current_month = current_datetime.strftime("%m")
-    current_day = current_datetime.strftime("%d")
-    current_time = current_datetime.strftime("%H:%M")
-
-    with open(f"{author_id}_Timesheets.csv", "r") as time:
-        lines = time.readlines()
-
-    clocked_in = False
-    for i in range(len(lines)):
-        entry_date, in_time, out_time, total = lines[i].strip().split(',')
-        if entry_date == f"{current_month}/{current_day}" and in_time and not out_time:
-            lines[i] = f"{entry_date},{in_time},{current_time},{calculate_total_hours(in_time, current_time)}\n"
-            clocked_in = True
-            break
-
-    if not clocked_in:
-        return f"You must clock in before you can clock out."
-
-    with open(f"{author_id}_Timesheets.csv", "w") as time:  # Open in write mode
-        time.writelines(lines)
-
-    return f"Clock out entry recorded for {current_month}/{current_day} for user {author_id}."
-
-
-
-def calculate_total_hours(start_time, end_time):
-    start = datetime.strptime(start_time, "%H:%M")
-    end = datetime.strptime(end_time, "%H:%M")
-    duration = end - start
-    total_hours = duration.total_seconds() / 3600
-    return round(total_hours, 2)
 
 
 #checks is user is available in GambaLogs.txt
@@ -255,7 +182,7 @@ voice_channel = None
 joinee = None
 startup_script_path = "/home/aiden/Desktop/Minecraft_2/Startup.sh"
 engine = pyttsx3.init()
-ollama.pull("deepseek-r1:7b")
+# ollama.pull("deepseek-r1:7b")
 
 #bot start up process
 load_dotenv()
@@ -688,50 +615,6 @@ async def on_message(message):
             print("message responded")
 
     #end of minecraft server commands
-
-    if msg == "create new":
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send(f"welcome to timesheet maker <@{message_authorID}> we are making you a file")
-            if create_new(message_authorID):
-                await message.channel.send(f"new file made {message_authorID}_Timesheets")
-                print("message responded")
-            else:
-                await message.channel.send(f"looks like {message_authorID}_Timesheets.csv already exists")
-                print("message responded")                     
-        elif check_channel(guild_id, channel_id, message_author):
-            write_file(message_author, RAW_MSG, guild_name, msg) 
-            await message.channel.send("command not supported here")
-    
-    if msg == "clock in":
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send(f"Welcome to timesheet maker <@{message_authorID}>! We are making a clock in entry for you.")
-            response_message = clock_in(message_authorID)
-            await message.channel.send(response_message)         
-        elif check_channel(guild_id, channel_id, message_author):
-            write_file(message_author, RAW_MSG, guild_name, msg) 
-            await message.channel.send("command not supported here")
-    
-    if msg == "clock out":
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send(f"Welcome to timesheet maker <@{message_authorID}>! We are making a clock out entry for you.")
-            response_message = clock_out(message_authorID)
-            await message.channel.send(response_message)
-            print("Message responded")           
-        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
-            write_file(message_author, RAW_MSG, guild_name, msg) 
-            await message.channel.send("Command not supported here.")
-
-    if msg == "export":
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send(file=discord.File(f'{message_authorID}_TimeSheets.csv'))
-            print("Message responded")           
-        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
-            write_file(message_author, RAW_MSG, guild_name, msg) 
-            await message.channel.send("Command not supported here.")
         
     if msg == "give verify":
         role = get(message.guild.roles, name='Verified')
