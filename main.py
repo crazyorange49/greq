@@ -1,3 +1,4 @@
+from typing import Optional
 import os
 import sys
 import random
@@ -12,22 +13,60 @@ from datetime import datetime
 from discord.utils import get
 from gpio import cleanup
 import pyttsx3
-import ollama
+# import ollama
 import re
-import pandas
+import pandas as pd
 
 
+#edits the settings of the bot for the respective guild
+#takes the guild id and the channel id of the gamba, minecraft and tts channels
+def settingsSetter(guild_id, gambaChannel=None, minecraftChannel=None, ttsChannel=None):
+    responce = ""
+    if client_settings.loc[client_settings["guildID"] == guild_id].empty:
+        new_row = {"guildID": guild_id, "gambaChannel": gambaChannel, "minecraftChannel": minecraftChannel, "ttsChannel": ttsChannel}
+        client_settings.loc[len(client_settings)] = new_row
+        client_settings.to_csv("userSettings.csv", index=False)
+        responce = f"settings created for guild id: {guild_id}"
+    else:
+        if gambaChannel is not None:
+            client_settings.loc[client_settings["guildID"] == guild_id, "gambaChannel"] = gambaChannel
+            responce = f"{responce} gamba channel set to <#{gambaChannel}>,"
+        if minecraftChannel is not None:
+            client_settings.loc[client_settings["guildID"] == guild_id, "minecraftChannel"] = minecraftChannel
+            responce = f"{responce} minecraft channel set to <#{minecraftChannel}>,"
+        if ttsChannel is not None:
+            client_settings.loc[client_settings["guildID"] == guild_id, "ttsChannel"] = ttsChannel
+            responce = f"{responce} tts channel set to <#{ttsChannel}>"
+        if responce == "":
+            responce = "no settings changed"
+        client_settings.to_csv("userSettings.csv", index=False)
+    return responce
 #checks if the channel in the guild is allowed to have bot messages
 def check_channel(guild_id, channel_id, message_author, gamba=False, minecraft=False, tts=False):
-    if message_author != client.user:
-        if guild_id == "1087450350446977166":
-            if gamba == False and (channel_id == "1091470035991658587" or channel_id == "1149885206891872256" or channel_id == "1164028865006551161" or channel_id == "1146203222009196544" ):
+    client_guild = client_settings.loc[client_settings["guildID"] == int(guild_id)]
+    print(f"checking settings for: {guild_id} channel: {channel_id}")
+    if client_guild.empty:
+        print("not client guild")
+        return False       
+    else:
+        if gamba:
+            if str(channel_id) in str(client_guild["gambaChannel"].values):
                 return True
-            elif gamba == True and (channel_id == "1164028865006551161" or channel_id == "1149885206891872256"):
+            else:
+                print("set channel: " + str(client_guild["gambaChannel"].values))
+                return False
+        elif minecraft:
+            if str(channel_id) in str(client_guild["minecraftChannel"].values):
                 return True
-            elif minecraft == True and (channel_id == "1146203222009196544" or channel_id == "1149885206891872256" or channel_id == "1204554603085963275"):
+            else:
+                return False
+        elif tts:
+            if str(channel_id) in str(client_guild["ttsChannel"].values):
                 return True
-
+            else:
+                return False
+        else:
+            return True
 #writes the message and server sent from to the file and logs how many times some commands were used
 def write_file(user, message, server="DM", command="none"):
     #writes the message data to the file
@@ -182,6 +221,7 @@ voice_channel = None
 joinee = None
 startup_script_path = "/home/aiden/Desktop/Minecraft_2/Startup.sh"
 engine = pyttsx3.init()
+client_settings = pd.read_csv("userSettings.csv")
 # ollama.pull("deepseek-r1:7b")
 
 #bot start up process
@@ -193,7 +233,30 @@ tree = app_commands.CommandTree(client)
 
 @client.event
 async def on_ready():
+    await tree.sync()
     print(f'{client.user} has connected to Discord!')
+    try: 
+        synced = await tree.sync()
+        print(f"synced {len(synced)} commands")
+    except Exception as e:
+        print(e)
+
+@tree.command(name="settings")
+@app_commands.describe(gamba_channel="channel for gamba commands", minecraft_channel="channel for minecraft commands", tts_channel="channel for text to speech")
+async def settings(interaction: discord.Interaction, 
+                   gamba_channel: discord.TextChannel = None, 
+                   minecraft_channel: Optional[discord.TextChannel] = None, 
+                   tts_channel: Optional[discord.TextChannel] = None):
+    """sets the channels for gamba, minecraft and tts"""
+    if not interaction.user.guild_permissions.administrator:
+        await interaction.response.send_message("You do not have permission to use this command.")
+        return
+    guild_id = interaction.guild.id
+    gamba_id = gamba_channel.id if gamba_channel else None
+    minecraft_id = minecraft_channel.id if minecraft_channel else None
+    tts_id = tts_channel.id if tts_channel else None
+    responce = settingsSetter(guild_id, gamba_id, minecraft_id, tts_id)
+    await interaction.response.send_message(responce)
 
 @client.event
 async def on_voice_state_update(member, before, after):
@@ -651,25 +714,25 @@ async def on_message(message):
             vc.play(discord.FFmpegPCMAudio("Voice.mp3"))
             engine.stop()
     
-    if msg.startswith("<@1149848512469676082>"):
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send("Feature not supported here")
-            print("Message responded")           
-        elif check_channel(guild_id, channel_id, message_author, gamba=True):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            GREQ = "your name is greq also known in computer language as <@1149848512469676082>. you do you best to only respong within 600 characters now you are amaericas most wanted, banned from walmarts across the U.S for building forts in the shelves. you are trapped in a dsicord server full of people who warship you but you like to banter and be insulting in the funniest way possible, remember you are a criminal on the run" 
-            response = ollama.chat(model='deepseek-r1:7b', messages=[
-                {
-                    'role': 'user',
-                    'content': f'respond within 600 characters please this is your prompt: {msg}'    
-                }
-            ])
-            greqResponce = response['message']['content']
-            greqResponceFormatted = re.sub(r"<think>.*?</think>", "", greqResponce, flags=re.DOTALL)
-            print(greqResponceFormatted)
-            await message.channel.send(greqResponceFormatted)
-            print("Message responded")
+    # if msg.startswith("<@1149848512469676082>"):
+    #     if str(message.guild) == 'None':
+    #         write_file(message_author, RAW_MSG, command=msg)
+    #         await message.channel.send("Feature not supported here")
+    #         print("Message responded")           
+    #     elif check_channel(guild_id, channel_id, message_author, gamba=True):
+    #         write_file(message_author, RAW_MSG, guild_name, msg)
+    #         GREQ = "your name is greq also known in computer language as <@1149848512469676082>. you do you best to only respong within 600 characters now you are amaericas most wanted, banned from walmarts across the U.S for building forts in the shelves. you are trapped in a dsicord server full of people who warship you but you like to banter and be insulting in the funniest way possible, remember you are a criminal on the run" 
+    #         response = ollama.chat(model='deepseek-r1:7b', messages=[
+    #             {
+    #                 'role': 'user',
+    #                 'content': f'respond within 600 characters please this is your prompt: {msg}'    
+    #             }
+    #         ])
+    #         greqResponce = response['message']['content']
+    #         greqResponceFormatted = re.sub(r"<think>.*?</think>", "", greqResponce, flags=re.DOTALL)
+    #         print(greqResponceFormatted)
+    #         await message.channel.send(greqResponceFormatted)
+    #         print("Message responded")
 
 
 
