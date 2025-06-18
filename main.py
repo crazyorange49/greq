@@ -23,19 +23,19 @@ import pandas as pd
 def settingsSetter(guild_id, gambaChannel=None, minecraftChannel=None, ttsChannel=None):
     responce = ""
     if client_settings.loc[client_settings["guildID"] == guild_id].empty:
-        new_row = {"guildID": guild_id, "gambaChannel": gambaChannel, "minecraftChannel": minecraftChannel, "ttsChannel": ttsChannel}
+        new_row = {"guildID": str(guild_id), "gambaChannel": str(gambaChannel), "minecraftChannel": str(minecraftChannel), "ttsChannel": str(ttsChannel)}
         client_settings.loc[len(client_settings)] = new_row
         client_settings.to_csv("userSettings.csv", index=False)
         responce = f"settings created for guild id: {guild_id}"
     else:
         if gambaChannel is not None:
-            client_settings.loc[client_settings["guildID"] == guild_id, "gambaChannel"] = gambaChannel
+            client_settings.loc[client_settings["guildID"] == guild_id, "gambaChannel"] = str(gambaChannel)
             responce = f"{responce} gamba channel set to <#{gambaChannel}>,"
         if minecraftChannel is not None:
-            client_settings.loc[client_settings["guildID"] == guild_id, "minecraftChannel"] = minecraftChannel
+            client_settings.loc[client_settings["guildID"] == guild_id, "minecraftChannel"] = str(minecraftChannel)
             responce = f"{responce} minecraft channel set to <#{minecraftChannel}>,"
         if ttsChannel is not None:
-            client_settings.loc[client_settings["guildID"] == guild_id, "ttsChannel"] = ttsChannel
+            client_settings.loc[client_settings["guildID"] == guild_id, "ttsChannel"] = str(ttsChannel)
             responce = f"{responce} tts channel set to <#{ttsChannel}>"
         if responce == "":
             responce = "no settings changed"
@@ -257,6 +257,33 @@ async def settings(interaction: discord.Interaction,
     tts_id = tts_channel.id if tts_channel else None
     responce = settingsSetter(guild_id, gamba_id, minecraft_id, tts_id)
     await interaction.response.send_message(responce)
+
+@tree.command(name="online")
+async def online(interaction: discord.Interaction):
+    write_file(interaction.user, '/online', interaction.guild, '/online')
+    if server_process and server_process.returncode is None:
+        status = requests.get("https://api.mcsrvstat.us/3/68.97.217.111:25565")
+        json_status = status.json()
+        players = [player['name'] for player in json_status['players']['list']]
+        application_emojis = await client.fetch_application_emojis()
+        emoji_names = [emoji.name for emoji in application_emojis]
+        for player in players:
+                if player in emoji_names:
+                    players[players.index(player)] = f"{player_emoji}{player}"
+                else:
+                    player_emoji = await client.create_application_emoji(name=player, image=requests.get(f"https://mc-heads.net/avatar/{player}/128"))
+                    players[players.index(player)] = f"{player_emoji}{player}"
+        online = json_status["players"]["online"]
+        thumbnail_url = json_status["icon"]
+        embed_description = json_status["motd"]["clean"][0] if json_status["motd"]["clean"] else "No MOTD available"
+        online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
+        online_embed.set_thumbnail(thumbnail_url)
+        online_embed.add_field(name="Online Players", value=str(online), inline=True)
+        online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
+        await interaction.response.send_message(f"online: {online}\nplayers: {players}")
+    else:
+        await interaction.response.send_message("The server is not running.")
+    print("message responded")
 
 @client.event
 async def on_voice_state_update(member, before, after):
