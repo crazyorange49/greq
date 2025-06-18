@@ -219,7 +219,7 @@ server_process = None
 global voice_channel
 voice_channel = None
 joinee = None
-startup_script_path = "/home/aiden/Desktop/Minecraft_2/Startup.sh"
+startup_script_path = "/home/aiden/Desktop/The_Cereal_Box_Minecraft/Startup.sh"
 engine = pyttsx3.init()
 client_settings = pd.read_csv("userSettings.csv")
 # ollama.pull("deepseek-r1:7b")
