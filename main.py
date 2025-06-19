@@ -269,9 +269,12 @@ async def online(interaction: discord.Interaction):
         emoji_names = [emoji.name for emoji in application_emojis]
         for player in players:
                 if player in emoji_names:
+                    player_emoji = discord.utils.get(client.fetch_application_emojis, name=player)
                     players[players.index(player)] = f"{player_emoji}{player}"
                 else:
-                    player_emoji = await client.create_application_emoji(name=player, image=requests.get(f"https://mc-heads.net/avatar/{player}/128"))
+                    await client.create_application_emoji(name=player, image=requests.get(f"https://mc-heads.net/avatar/{player}/128"))
+                    application_emojis = await client.fetch_application_emojis()
+                    player_emoji = application_emojis.find(lambda e: e.name == player)
                     players[players.index(player)] = f"{player_emoji}{player}"
         online = json_status["players"]["online"]
         thumbnail_url = json_status["icon"]
