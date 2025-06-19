@@ -179,3 +179,4 @@ cython_debug/
 !GambaCommands.txt
 /node_modules
 pandasTest.py
+*.png
