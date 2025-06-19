@@ -22,6 +22,7 @@ import pandas as pd
 #takes the guild id and the channel id of the gamba, minecraft and tts channels
 def settingsSetter(guild_id, gambaChannel=None, minecraftChannel=None, ttsChannel=None):
     responce = ""
+    client_settings = pd.read_csv("userSettings.csv")
     if client_settings.loc[client_settings["guildID"] == guild_id].empty:
         new_row = {"guildID": str(guild_id), "gambaChannel": str(gambaChannel), "minecraftChannel": str(minecraftChannel), "ttsChannel": str(ttsChannel)}
         client_settings.loc[len(client_settings)] = new_row
@@ -40,9 +41,12 @@ def settingsSetter(guild_id, gambaChannel=None, minecraftChannel=None, ttsChanne
         if responce == "":
             responce = "no settings changed"
         client_settings.to_csv("userSettings.csv", index=False)
+    client_settings = None
     return responce
 #checks if the channel in the guild is allowed to have bot messages
 def check_channel(guild_id, channel_id, message_author, gamba=False, minecraft=False, tts=False):
+    is_allowed = False
+    client_settings = pd.read_csv("userSettings.csv")
     client_guild = client_settings.loc[client_settings["guildID"] == int(guild_id)]
     print(f"checking settings for: {guild_id} channel: {channel_id}")
     if client_guild.empty:
@@ -51,22 +55,24 @@ def check_channel(guild_id, channel_id, message_author, gamba=False, minecraft=F
     else:
         if gamba:
             if str(channel_id) in str(client_guild["gambaChannel"].values):
-                return True
+                is_allowed = True
             else:
                 print("set channel: " + str(client_guild["gambaChannel"].values))
-                return False
+                is_allowed = False
         elif minecraft:
             if str(channel_id) in str(client_guild["minecraftChannel"].values):
-                return True
+                is_allowed = True
             else:
-                return False
+                is_allowed = False
         elif tts:
             if str(channel_id) in str(client_guild["ttsChannel"].values):
-                return True
+                is_allowed = True
             else:
-                return False
+                is_allowed = False
         else:
-            return True
+            is_allowed = True
+        client_settings = None
+        return is_allowed
 #writes the message and server sent from to the file and logs how many times some commands were used
 def write_file(user, message, server="DM", command="none"):
     #writes the message data to the file
@@ -221,7 +227,7 @@ voice_channel = None
 joinee = None
 startup_script_path = "/home/aiden/Desktop/The_Cereal_Box_Minecraft/Startup.sh"
 engine = pyttsx3.init()
-client_settings = pd.read_csv("userSettings.csv")
+global client_settings
 # ollama.pull("deepseek-r1:7b")
 
 #bot start up process
