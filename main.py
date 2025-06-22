@@ -247,7 +247,7 @@ async def on_ready():
     except Exception as e:
         print(e)
 
-guild = client.get_guild(938325287333154896)
+
 
 @tree.command(name="settings")
 @app_commands.describe(gamba_channel="channel for gamba commands", minecraft_channel="channel for minecraft commands", tts_channel="channel for text to speech")
@@ -268,14 +268,13 @@ async def settings(interaction: discord.Interaction,
 
 @tree.command(name="online")
 async def online(interaction: discord.Interaction):
-    """Checks the online status of the Minecraft server and returns the number of online players and their names."""
-    write_file(interaction.user, '/online', interaction.guild, '/online')   
-    guild = client.get_guild(938325287333154896)
+    write_file(interaction.user, '/online', interaction.guild, '/online')
+    Emoji_guild = client.get_guild(938325287333154896)
     if server_process and server_process.returncode is None:
         status = requests.get("https://api.mcsrvstat.us/3/68.97.217.111:25565")
         json_status = status.json()
         players = [player['name'] for player in json_status['players']['list']]
-        client_emojis = await guild.emojis()
+        client_emojis = Emoji_guild.emojis
         for player in players:
                 if player in [emoji.name for emoji in client_emojis]:
                     player_emoji = discord.utils.get(client_emojis, name=player)
@@ -283,7 +282,7 @@ async def online(interaction: discord.Interaction):
                 else:
                     with open(f"{player}.png", "wb") as image_file:
                         image_file.write(requests.get("https://mc-heads.net/avatar/{player}/128.png").content)
-                    await guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
+                    await Emoji_guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
                     player_emoji = discord.utils.get(client_emojis, name=player)
                     players[players.index(player)] = f"{player_emoji}{player}"
         online = json_status["players"]["online"]
@@ -333,7 +332,7 @@ async def on_message(message):
             guild_id = str(message.guild.id)
             guild_name = str(message.guild)
         print(f"{message_author}: {RAW_MSG}, channel id: {channel_id}")
-
+        
     #checks message content for the word cat and gives a random image of a cat                     
     if msg == "cat":
         if str(message.guild) == 'None':
