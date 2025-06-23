@@ -285,11 +285,13 @@ async def online(interaction: discord.Interaction):
                     await Emoji_guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
                     player_emoji = discord.utils.get(client_emojis, name=player)
                     players[players.index(player)] = f"{player_emoji}{player}"
+        with open("icon.txt", "wb") as icon:
+            icon.write(json_status["icon"].content)
         online = json_status["players"]["online"]
-        thumbnail_url = json_status["icon"]
+        
         embed_description = json_status["motd"]["clean"][0] if json_status["motd"]["clean"] else "No MOTD available"
         online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
-        online_embed.set_thumbnail(thumbnail_url)
+        online_embed.set_thumbnail(icon=open("icon.txt", "rb").read())
         online_embed.add_field(name="Online Players", value=str(online), inline=True)
         online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
         await interaction.response.send_message(f"online: {online}\nplayers: {players}")
