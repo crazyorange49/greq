@@ -5,5 +5,3 @@
 #game commands
 !slotspt: slots pay table
 !slots (optinal # of spins): spins the slots
-
-!roulettept: roulette pay table
