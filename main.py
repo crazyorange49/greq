@@ -285,16 +285,14 @@ async def online(interaction: discord.Interaction):
                     await Emoji_guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
                     player_emoji = discord.utils.get(client_emojis, name=player)
                     players[players.index(player)] = f"{player_emoji}{player}"
-        with open("icon.txt", "wb") as icon:
-            icon.write(json_status["icon"].content)
         online = json_status["players"]["online"]
-        
+        thumbnail_url = "https://i.ibb.co/gbXqwpq9/image.png"U
         embed_description = json_status["motd"]["clean"][0] if json_status["motd"]["clean"] else "No MOTD available"
         online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
-        online_embed.set_thumbnail(icon=open("icon.txt", "rb").read())
+        online_embed.set_thumbnail(url=thumbnail_url)
         online_embed.add_field(name="Online Players", value=str(online), inline=True)
         online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
-        await interaction.response.send_message(f"online: {online}\nplayers: {players}")
+        await interaction.response.send_message(embed=online_embed)
     else:
         await interaction.response.send_message("The server is not running.")
     print("message responded")
@@ -631,16 +629,16 @@ async def on_message(message):
 
     #end of gamba section
 
-    if "crazy" in msg or "Crazy" in msg:
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send(f"Crazy? i was crazy once they locked me in a room, a rubber room, a rubber room with rats")
-            print("message responded")
-        elif check_channel(guild_id, channel_id, message_author):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            await message.channel.send(f"Crazy? i was crazy once they locked me in a room, a rubber room, a rubber room with rats")
-        else:
-            return
+    # if "crazy" in msg or "Crazy" in msg:
+    #     if str(message.guild) == 'None':
+    #         write_file(message_author, RAW_MSG, command=msg)
+    #         await message.channel.send(f"Crazy? i was crazy once they locked me in a room, a rubber room, a rubber room with rats")
+    #         print("message responded")
+    #     elif check_channel(guild_id, channel_id, message_author):
+    #         write_file(message_author, RAW_MSG, guild_name, msg)
+    #         await message.channel.send(f"Crazy? i was crazy once they locked me in a room, a rubber room, a rubber room with rats")
+    #     else:
+    #         return
 
     #minecraft server commands
 
