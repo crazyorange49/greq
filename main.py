@@ -774,8 +774,4 @@ async def on_message(message):
     #         await message.channel.send(greqResponceFormatted)
     #         print("Message responded")
 
-
-
-
-
 client.run(TOKEN)
