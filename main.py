@@ -268,34 +268,68 @@ async def settings(interaction: discord.Interaction,
 
 @tree.command(name="online")
 async def online(interaction: discord.Interaction):
-    write_file(interaction.user, '/online', interaction.guild, '/online')
-    Emoji_guild = client.get_guild(938325287333154896)
-    if server_process and server_process.returncode is None:
-        status = requests.get("https://api.mcsrvstat.us/3/68.97.217.111:25565")
-        json_status = status.json()
-        players = [player['name'] for player in json_status['players']['list']]
-        client_emojis = Emoji_guild.emojis
-        for player in players:
-                if player in [emoji.name for emoji in client_emojis]:
-                    player_emoji = discord.utils.get(client_emojis, name=player)
-                    players[players.index(player)] = f"{player_emoji}{player}"
-                else:
-                    with open(f"{player}.png", "wb") as image_file:
-                        image_file.write(requests.get("https://mc-heads.net/avatar/{player}/128.png").content)
-                    await Emoji_guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
-                    player_emoji = discord.utils.get(client_emojis, name=player)
-                    players[players.index(player)] = f"{player_emoji}{player}"
-        online = json_status["players"]["online"]
-        thumbnail_url = "https://i.ibb.co/gbXqwpq9/image.png"U
-        embed_description = json_status["motd"]["clean"][0] if json_status["motd"]["clean"] else "No MOTD available"
-        online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
-        online_embed.set_thumbnail(url=thumbnail_url)
-        online_embed.add_field(name="Online Players", value=str(online), inline=True)
-        online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
-        await interaction.response.send_message(embed=online_embed)
-    else:
-        await interaction.response.send_message("The server is not running.")
-    print("message responded")
+    """Checks the online status of the Minecraft server and returns the list of online players."""
+    if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
+        write_file(interaction.user, '/online', interaction.guild, '/online')
+        Emoji_guild = client.get_guild(938325287333154896)
+        if server_process and server_process.returncode is None:
+            status = requests.get("https://api.mcsrvstat.us/3/68.97.217.111:25565")
+            json_status = status.json()
+            players = [player['name'] for player in json_status['players']['list']]
+            client_emojis = Emoji_guild.emojis
+            for player in players:
+                    if player in [emoji.name for emoji in client_emojis]:
+                        player_emoji = discord.utils.get(client_emojis, name=player)
+                        players[players.index(player)] = f"{player_emoji}{player}"
+                    else:
+                        with open(f"{player}.png", "wb") as image_file:
+                            image_file.write(requests.get("https://mc-heads.net/avatar/{player}/128.png").content)
+                        await Emoji_guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
+                        player_emoji = discord.utils.get(client_emojis, name=player)
+                        players[players.index(player)] = f"{player_emoji}{player}"
+            online = json_status["players"]["online"]
+            thumbnail_url = "https://i.ibb.co/gbXqwpq9/image.png"
+            embed_description = json_status["motd"]["clean"][0] if json_status["motd"]["clean"] else "No MOTD available"
+            online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
+            online_embed.set_thumbnail(url=thumbnail_url)
+            online_embed.add_field(name="Online Players", value=str(online), inline=True)
+            online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
+            await interaction.response.send_message(embed=online_embed)
+        else:
+            await interaction.response.send_message("The server is not running.")
+        print("message responded")
+
+@tree.command(name="start")
+async def start(interaction: discord.Interaction):
+    """Starts the Minecraft server."""
+    if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
+        write_file(interaction.user, '/start', interaction.guild, '/start')
+        global server_process
+        if server_process and server_process.returncode is None:
+            await interaction.response.send_message("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
+            print("message responded") 
+        else:
+            try:
+                # Start the process
+                server_process = await asyncio.create_subprocess_exec(
+                    "bash", startup_script_path,
+                    stdin=asyncio.subprocess.PIPE,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE
+                )
+                await interaction.response.send_message("Server starting up. Please wait a moment.")
+
+                # Read stdout and stderr asynchronously
+                async for line in server_process.stdout:
+                    print(f"STDOUT: {line.decode().strip()}")
+
+                async for line in server_process.stderr:
+                    print(f"STDERR: {line.decode().strip()}")
+
+            except Exception as e:
+                await interaction.response.send_message(f"Error starting server: {e}")
+                print(f"Error: {e}")
+            print("message responded")
 
 @client.event
 async def on_voice_state_update(member, before, after):
@@ -643,12 +677,8 @@ async def on_message(message):
     #minecraft server commands
 
     #starts the minecraft server
-    if msg == "!start":
-        if message.guild is None:
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send("You cannot do this outside of the server")
-            print("message responded")           
-        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
+    if msg == "!start":          
+        if check_channel(guild_id, channel_id, message_author, minecraft=True):
             write_file(message_author, RAW_MSG, guild_name, msg)
             if server_process and server_process.returncode is None:
                 await message.channel.send("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
@@ -686,37 +716,6 @@ async def on_message(message):
             await message.channel.send("||68.97.217.111||")
             print("message responded")
 
-    if msg == "!status":
-        if message.guild is None:
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send("You cannot do this outside of the server")
-            print("message responded")           
-        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            for proc in psutil.process_iter(['pid', 'name']):
-                if "java" in proc.info['name'].lower():
-                    await message.channel.send("Server is up and running. If not, it is having a critical error. Please contact the owner.")
-                    print("message responded") 
-                    break
-            else:
-                await message.channel.send("Server not running")
-                print("message responded")
-    #gives current online players
-    if msg == "!online":
-        if message.guild is None:
-            write_file(message_author, RAW_MSG, command=msg)
-            print("message responded")
-        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            if server_process and server_process.returncode is None:
-                status = requests.get("https://api.mcsrvstat.us/3/68.97.217.111:25565")
-                json_status = status.json()
-                players = [player['name'] for player in json_status['players']['list']]
-                online = json_status["players"]["online"]
-                await message.channel.send(f"online: {online}\nplayers: {players}")
-            else:
-                await message.channel.send("The server is not running.")
-            print("message responded")
 
     #end of minecraft server commands
         
