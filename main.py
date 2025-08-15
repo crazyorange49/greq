@@ -16,6 +16,7 @@ import pyttsx3
 # import ollama
 import re
 import pandas as pd
+import datetime
 
 
 #edits the settings of the bot for the respective guild
@@ -76,8 +77,9 @@ def check_channel(guild_id, channel_id, message_author, gamba=False, minecraft=F
 #writes the message and server sent from to the file and logs how many times some commands were used
 def write_file(user, message, server="DM", command="none"):
     #writes the message data to the file
+
     with open('Logs.txt', 'a') as logs:
-        logs.write(f"\nServer: {server} message: {user}: {message}")
+        logs.write(f"\n{datetime.datetime.now()} Server: {server} message: {user}: {message}")
     #checks for command usage and increments the respective number
     if command == "none":
         #if a command isn't inputted it won't be counted towards anything
@@ -303,7 +305,7 @@ async def online(interaction: discord.Interaction):
 async def start(interaction: discord.Interaction):
     """Starts the Minecraft server."""
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
-        write_file(interaction.user, '/start', interaction.guild, '/start')
+        write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/start')
         global server_process
         if server_process and server_process.returncode is None:
             await interaction.response.send_message("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
@@ -329,6 +331,20 @@ async def start(interaction: discord.Interaction):
             except Exception as e:
                 await interaction.response.send_message(f"Error starting server: {e}")
                 print(f"Error: {e}")
+            print("message responded")
+
+
+#shash command for gambling and responds with the message authors money stored in GambaLogs.txt
+@tree.command(name="money")
+async def money(interaction: discord.Interaction):
+    """Checks the amount of money in the user's account."""
+    message_author = interaction.user
+    if check_channel(interaction.guild.id, interaction.channel.id, message_author, True):         
+            write_file(message_author, "SLASH COMMAND", interaction.guild, "/money")
+            if get_money(message_author.id)[1]:
+                await interaction.response.send_message(f"{message_author}`s money is ${get_money(message_author.id)[0]}")
+            else:
+                await interaction.response.send_message(f"either an error occurred or user {message_author} doesnt exists")
             print("message responded")
 
 @client.event
@@ -604,21 +620,8 @@ async def on_message(message):
     #checks message content for the words !money and responds with the current amount of money in respective account
 
     #checks message content for the words !money and responds with the message authors money stored in GambaLogs.txt
-    if msg == "!money":
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            if get_money(message_authorID)[1]:
-                await message.channel.send(f"{message_author}`s money is ${get_money(message_authorID)[0]}")
-            print("message responded")
-        elif check_channel(guild_id, channel_id, message_author, True):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            if get_money(message_authorID)[1]:
-                await message.channel.send(f"{message_author}`s money is ${get_money(message_authorID)[0]}")
-            else:
-                await message.channel.send(f"either an error occurred or user {message_author} doesnt exists")
-            print("message responded")
 
-     #checks message content for the words !slotpt and responds with the contents of the commands file
+    #checks message content for the words !slotpt and responds with the contents of the commands file
 
     #cheakc message content for the words !slotspt and responds with the slots pay table
     if msg.startswith("!slotspt"):
@@ -676,35 +679,6 @@ async def on_message(message):
 
     #minecraft server commands
 
-    #starts the minecraft server
-    if msg == "!start":          
-        if check_channel(guild_id, channel_id, message_author, minecraft=True):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            if server_process and server_process.returncode is None:
-                await message.channel.send("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
-                print("message responded") 
-            else:
-                try:
-                    # Start the process
-                    server_process = await asyncio.create_subprocess_exec(
-                        "bash", startup_script_path,
-                        stdin=asyncio.subprocess.PIPE,
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
-                    )
-                    await message.channel.send("Server starting up. Please wait a moment.")
-
-                    # Read stdout and stderr asynchronously
-                    async for line in server_process.stdout:
-                        print(f"STDOUT: {line.decode().strip()}")
-
-                    async for line in server_process.stderr:
-                        print(f"STDERR: {line.decode().strip()}")
-
-                except Exception as e:
-                    await message.channel.send(f"Error starting server: {e}")
-                    print(f"Error: {e}")
-            print("message responded") 
     #gives the ip address as spoiler
     if msg == "!ip":
         if message.guild is None:
