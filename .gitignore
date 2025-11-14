@@ -180,3 +180,4 @@ cython_debug/
 /node_modules
 pandasTest.py
 *.png
+CiCo_unit_test.py

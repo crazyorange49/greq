@@ -19,31 +19,33 @@ import pandas as pd
 import datetime
 
 
+
+
 #edits the settings of the bot for the respective guild
 #takes the guild id and the channel id of the gamba, minecraft and tts channels
 def settingsSetter(guild_id, gambaChannel=None, minecraftChannel=None, ttsChannel=None):
-    responce = ""
+    response = ""
     client_settings = pd.read_csv("userSettings.csv")
     if client_settings.loc[client_settings["guildID"] == guild_id].empty:
         new_row = {"guildID": str(guild_id), "gambaChannel": str(gambaChannel), "minecraftChannel": str(minecraftChannel), "ttsChannel": str(ttsChannel)}
         client_settings.loc[len(client_settings)] = new_row
         client_settings.to_csv("userSettings.csv", index=False)
-        responce = f"settings created for guild id: {guild_id}"
+        response = f"settings created for guild id: {guild_id}"
     else:
         if gambaChannel is not None:
             client_settings.loc[client_settings["guildID"] == guild_id, "gambaChannel"] = str(gambaChannel)
-            responce = f"{responce} gamba channel set to <#{gambaChannel}>,"
+            response = f"{response} gamba channel set to <#{gambaChannel}>,"
         if minecraftChannel is not None:
             client_settings.loc[client_settings["guildID"] == guild_id, "minecraftChannel"] = str(minecraftChannel)
-            responce = f"{responce} minecraft channel set to <#{minecraftChannel}>,"
+            response = f"{response} minecraft channel set to <#{minecraftChannel}>,"
         if ttsChannel is not None:
             client_settings.loc[client_settings["guildID"] == guild_id, "ttsChannel"] = str(ttsChannel)
-            responce = f"{responce} tts channel set to <#{ttsChannel}>"
-        if responce == "":
-            responce = "no settings changed"
+            response = f"{response} tts channel set to <#{ttsChannel}>"
+        if response == "":
+            response = "no settings changed"
         client_settings.to_csv("userSettings.csv", index=False)
     client_settings = None
-    return responce
+    return response
 #checks if the channel in the guild is allowed to have bot messages
 def check_channel(guild_id, channel_id, message_author, gamba=False, minecraft=False, tts=False):
     is_allowed = False
@@ -219,6 +221,8 @@ def slots_calculations(spins, message_authorID):
     else:
         return
 
+
+
 babyYoda_memes = ["https://cdn.discordapp.com/attachments/1162221035505066084/1162223866609946664/IMG_1700.jpg?ex=653b2852&is=6528b352&hm=398ddc74ec70b33e270e55fbd7e3f5cc228b8fbab21c789fed61cc1749f6f52c&", "https://cdn.discordapp.com/attachments/1162221035505066084/1162223866257604669/IMG_1701.jpg?ex=653b2852&is=6528b352&hm=92f956ff09b973ad16096ee234ca251a99efa7350ec655c316dffbe6f3e4be7e&", "https://cdn.discordapp.com/attachments/1162221035505066084/1162223504574402570/IMG_4378.jpg?ex=653b27fc&is=6528b2fc&hm=882fac6f1c1dc1704a26a1eabaaf5f9380712dc6a6ed510edd75a583ee8024d7&", "https://images.squarespace-cdn.com/content/v1/52df0e63e4b07360a57e5bb8/1575836269357-3JO98844S7S7U6Z05XLE/Baby+Yoda+Work+.png?format=1500w", "https://hips.hearstapps.com/hmg-prod/images/baby-yoda-pope-1574183303.jpeg?crop=1xw:0.7398452611218569xh;center,top&resize=1200:*", "https://pbs.twimg.com/media/Enuta6UVEAAE4WD?format=jpg&name=900x900", "https://wkml.com/wp-content/uploads/sites/53/2019/12/Baby-Yoda-Memes-4-297x300.jpg", ]
 slots_payTable = 'BAR\tBAR\tBAR\t\tpays\t$254\nBELL\tBELL\tBELL\tpays\t$24\nPLUM\tPLUM\tPLUM\tpays\t$18\nORANGE\tORANGE\tORANGE\tpays\t$14\nCHERRY\tCHERRY\tCHERRY\t\tpays\t$11\nCHERRY\tCHERRY\t  -\t\tpays\t$9\nCHERRY\t  -\t  -\t\tpays\t$6'
 ITEMS = ["CHERRY", "LEMON", "ORANGE", "PLUM", "BELL", "BAR"]
@@ -231,6 +235,7 @@ startup_script_path = "/home/aiden/Desktop/The_Cereal_Box_Minecraft/Startup.sh"
 engine = pyttsx3.init()
 global client_settings
 # ollama.pull("deepseek-r1:7b")
+
 
 #bot start up process
 load_dotenv()
@@ -248,8 +253,6 @@ async def on_ready():
         print(f"synced {len(synced)} commands")
     except Exception as e:
         print(e)
-
-
 
 @tree.command(name="settings")
 @app_commands.describe(gamba_channel="channel for gamba commands", minecraft_channel="channel for minecraft commands", tts_channel="channel for text to speech")
