@@ -49,8 +49,8 @@ def settingsSetter(guild_id, gambaChannel=None, minecraftChannel=None, ttsChanne
 #checks if the channel in the guild is allowed to have bot messages
 def check_channel(guild_id, channel_id, message_author, gamba=False, minecraft=False, tts=False):
     is_allowed = False
-    client_settings = pd.read_csv("userSettings.csv")
-    client_guild = client_settings.loc[client_settings["guildID"] == int(guild_id)]
+    client_settings = pd.read_csv("userSettings.csv", dtype={"guildID": str, "gambaChannel": str, "minecraftChannel": str, "ttsChannel": str})
+    client_guild = client_settings.loc[client_settings["guildID"] == str(guild_id)]
     print(f"checking settings for: {guild_id} channel: {channel_id}")
     if client_guild.empty:
         print("not client guild")
@@ -63,9 +63,10 @@ def check_channel(guild_id, channel_id, message_author, gamba=False, minecraft=F
                 print("set channel: " + str(client_guild["gambaChannel"].values))
                 is_allowed = False
         elif minecraft:
-            if str(channel_id) in str(client_guild["minecraftChannel"].values):
+            if str(channel_id) in client_guild["minecraftChannel"].values:
                 is_allowed = True
             else:
+                print("set channels: " + str(client_guild["minecraftChannel"].values))
                 is_allowed = False
         elif tts:
             if str(channel_id) in str(client_guild["ttsChannel"].values):
@@ -81,7 +82,7 @@ def write_file(user, message, server="DM", command="none"):
     #writes the message data to the file
 
     with open('Logs.txt', 'a') as logs:
-        logs.write(f"\n{datetime.datetime.now()} Server: {server} message: {user}: {message}")
+        logs.write(f"\n{datetime.datetime.now()} Server: {server} message: {user}: {command}")
     #checks for command usage and increments the respective number
     if command == "none":
         #if a command isn't inputted it won't be counted towards anything
@@ -278,7 +279,7 @@ async def online(interaction: discord.Interaction):
         write_file(interaction.user, '/online', interaction.guild, '/online')
         Emoji_guild = client.get_guild(938325287333154896)
         if server_process and server_process.returncode is None:
-            status = requests.get("https://api.mcsrvstat.us/3/68.97.217.111:25565")
+            status = requests.get("https://api.mcsrvstat.us/3/68.12.58.197:25565")
             json_status = status.json()
             players = [player['name'] for player in json_status['players']['list']]
             client_emojis = Emoji_guild.emojis
@@ -342,7 +343,7 @@ async def start(interaction: discord.Interaction):
 async def money(interaction: discord.Interaction):
     """Checks the amount of money in the user's account."""
     message_author = interaction.user
-    if check_channel(interaction.guild.id, interaction.channel.id, message_author, True):         
+    if check_channel(interaction.guild.id, interaction.channel.id, message_author, gamba=True):         
             write_file(message_author, "SLASH COMMAND", interaction.guild, "/money")
             if get_money(message_author.id)[1]:
                 await interaction.response.send_message(f"{message_author}`s money is ${get_money(message_author.id)[0]}")
@@ -690,7 +691,7 @@ async def on_message(message):
             print("message responded")           
         elif check_channel(guild_id, channel_id, message_author, minecraft=True):
             write_file(message_author, RAW_MSG, guild_name, msg)
-            await message.channel.send("||68.97.217.111||")
+            await message.channel.send("||68.12.58.197||")
             print("message responded")
 
 
