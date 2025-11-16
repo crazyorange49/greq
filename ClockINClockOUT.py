@@ -25,6 +25,7 @@ class CiCo:
         :return: returns a string only if the user account is already saved to CiCoUserData.csv
         """
         UserData = pd.read_csv('CiCoUserData.csv', dtype={'col1':str, 'col2':str, 'col3':str})
+        file_path = f"{DiscordUserID}.csv"
         DiscordUserID = str(DiscordUserID)
         if UserData.loc[UserData["UserID"] == DiscordUserID].empty:
             newRow = {"UserID": DiscordUserID,
@@ -33,6 +34,13 @@ class CiCo:
                      }
             UserData.loc[len(UserData)] = newRow
             UserData.to_csv("CiCoUserData.csv", index=False)
+        
+        try:
+            with open(file_path, 'x') as file:
+                file.write("Date,Clock In,Clock Out,Total Hours\n")
+        except FileExistsError:
+            print(f"The file {file_path} already exists")
+
         else:
             return "account is already saved. use /view account to viw account details or /edit to edit any details about your account"
 
@@ -75,10 +83,42 @@ class CiCo:
 
 
     # TODO clock in (DiscordUserID) -> Void: uses the current data and time and writes it to the respective file for the user
-
+    def clock_in(self, DiscordUserID):
+        now = datetime.datetime.now()
+        date = now.strftime("%m/%d/%Y")
+        time = now.strftime("%H:%M")
+        time_sheet_file = f"{DiscordUserID}.csv"
+        time_sheet = pd.read_csv(time_sheet_file, dtype={'Date':str, 'Clock In':str, 'Clock Out':str, 'Total Hours':str})
+        newRow = { "Date": date,
+                    "Clock In": time,
+                    "Clock Out": "",
+                    "Total Hours": ""
+                 }
+        time_sheet.loc[len(time_sheet)] = newRow
+        time_sheet.to_csv(time_sheet_file, index=False)
 
     # TODO clock out (DiscordUserID) -> String: uses the current data and time and writes it the respective file for the user then returns the time in hours exe: 1 hour 30 minutes 1.30
-
+    def clock_out(self, DiscordUserID):
+        now = datetime.datetime.now()
+        date = now.strftime("%m/%d/%Y")
+        time = now.strftime("%H:%M")
+        time_sheet_file = f"{DiscordUserID}.csv"
+        time_sheet = pd.read_csv(time_sheet_file, dtype={'Date':str, 'Clock In':str, 'Clock Out':str, 'Total Hours':str})
+        #find the last clock in entry without a clock out
+        last_clock_in_index = time_sheet[(time_sheet["Clock Out"] == "") & (time_sheet["Date"] == date)].index
+        if not last_clock_in_index.empty:
+            idx = last_clock_in_index[-1]
+            clock_in_time_str = time_sheet.at[idx, "Clock In"]
+            clock_in_time = datetime.datetime.strptime(f"{date} {clock_in_time_str}", "%m/%d/%Y %H:%M")
+            clock_out_time = now
+            total_hours = clock_out_time - clock_in_time
+            print(total_hours)
+            total_hours_str = f"{total_hours}"
+            time_sheet.at[idx, "Clock Out"] = time
+            time_sheet.at[idx, "Total Hours"] = total_hours_str
+            time_sheet.to_csv(time_sheet_file, index=False)
+            return total_hours_str
+        pass
 
     # TODO export (DiscordUserID) -> PDF File: writes the saved user data to a pdf in Icodes timesheet format
 
