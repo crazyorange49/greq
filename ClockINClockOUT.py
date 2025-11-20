@@ -99,26 +99,7 @@ class CiCo:
 
     # TODO clock out (DiscordUserID) -> String: uses the current data and time and writes it the respective file for the user then returns the time in hours exe: 1 hour 30 minutes 1.30
     def clock_out(self, DiscordUserID):
-        now = datetime.datetime.now()
-        date = now.strftime("%m/%d/%Y")
-        time = now.strftime("%H:%M")
-        time_sheet_file = f"{DiscordUserID}.csv"
-        time_sheet = pd.read_csv(time_sheet_file, dtype={'Date':str, 'Clock In':str, 'Clock Out':str, 'Total Hours':str})
-        #find the last clock in entry without a clock out
-        last_clock_in_index = time_sheet[(time_sheet["Clock Out"] == "") & (time_sheet["Date"] == date)].index
-        if not last_clock_in_index.empty:
-            idx = last_clock_in_index[-1]
-            clock_in_time_str = time_sheet.at[idx, "Clock In"]
-            clock_in_time = datetime.datetime.strptime(f"{date} {clock_in_time_str}", "%m/%d/%Y %H:%M")
-            clock_out_time = now
-            total_hours = clock_out_time - clock_in_time
-            print(total_hours)
-            total_hours_str = f"{total_hours}"
-            time_sheet.at[idx, "Clock Out"] = time
-            time_sheet.at[idx, "Total Hours"] = total_hours_str
-            time_sheet.to_csv(time_sheet_file, index=False)
-            return total_hours_str
-        pass
+        
 
     # TODO export (DiscordUserID) -> PDF File: writes the saved user data to a pdf in Icodes timesheet format
 

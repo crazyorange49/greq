@@ -17,6 +17,9 @@ import pyttsx3
 import re
 import pandas as pd
 import datetime
+import base64
+import json
+from PIL import Image
 
 
 
@@ -232,7 +235,6 @@ server_process = None
 global voice_channel
 voice_channel = None
 joinee = None
-startup_script_path = os.getenv('STARTUP_PATH')
 engine = pyttsx3.init()
 global client_settings
 # ollama.pull("deepseek-r1:7b")
@@ -275,11 +277,12 @@ async def settings(interaction: discord.Interaction,
 @tree.command(name="online")
 async def online(interaction: discord.Interaction):
     """Checks the online status of the Minecraft server and returns the list of online players."""
+    server_ip = os.getenv('Server_IP')
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
         write_file(interaction.user, '/online', interaction.guild, '/online')
         Emoji_guild = client.get_guild(938325287333154896)
         if server_process and server_process.returncode is None:
-            status = requests.get("https://api.mcsrvstat.us/3/68.12.58.197:25565")
+            status = requests.get(f"https://api.mcsrvstat.us/3/{server_ip}:25565")
             json_status = status.json()
             players = [player['name'] for player in json_status['players']['list']]
             client_emojis = Emoji_guild.emojis
@@ -288,9 +291,18 @@ async def online(interaction: discord.Interaction):
                         player_emoji = discord.utils.get(client_emojis, name=player)
                         players[players.index(player)] = f"{player_emoji}{player}"
                     else:
-                        with open(f"{player}.png", "wb") as image_file:
-                            image_file.write(requests.get("https://mc-heads.net/avatar/{player}/128.png").content)
-                        await Emoji_guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
+                        player_uuid = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()["id"]
+                        player_value = requests.get(f"https://sessionserver.mojang.com/session/minecraft/profile/{player_uuid}").json()["properties"][0]["value"]
+                        player_texture = json.loads(base64.b64decode(player_value))["textures"]["SKIN"]["url"]
+                        with open(f"skin.png", "wb") as image_file:
+                            image_file.write(requests.get(player_texture).content)
+                        image_file = Image.open("skin.png")
+                        image_file.crop((8, 8, 16, 16)).save("skin.png")
+                        image_file.close()
+                        image_file = Image.open("skin.png")
+                        image_file.resize((128, 128), resample=Image.NEAREST).save("Emojis/player.png")
+                        image_file.close()
+                        await Emoji_guild.create_custom_emoji(name=player, image= open(f"Emojis/{player}.png", "rb").read())
                         player_emoji = discord.utils.get(client_emojis, name=player)
                         players[players.index(player)] = f"{player_emoji}{player}"
             online = json_status["players"]["online"]
@@ -308,6 +320,7 @@ async def online(interaction: discord.Interaction):
 @tree.command(name="start")
 async def start(interaction: discord.Interaction):
     """Starts the Minecraft server."""
+    startup_script_path = os.getenv('STARTUP_PATH')
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
         write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/start')
         global server_process
@@ -337,6 +350,14 @@ async def start(interaction: discord.Interaction):
                 print(f"Error: {e}")
             print("message responded")
 
+@tree.command(name="ip")
+async def ip(interaction: discord.Interaction):
+    """Checks the IP address of the Minecraft server."""
+    server_ip = os.getenv('Server_IP')
+    if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):         
+            write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/ip')
+            await interaction.response.send_message(f"The server IP address is: ||{server_ip}||")
+            print("message responded")
 
 #shash command for gambling and responds with the message authors money stored in GambaLogs.txt
 @tree.command(name="money")
@@ -621,12 +642,6 @@ async def on_message(message):
                 await message.channel.send(f"either an error occurred or user {message_author} already exists")
             print("message responded")
 
-    #checks message content for the words !money and responds with the current amount of money in respective account
-
-    #checks message content for the words !money and responds with the message authors money stored in GambaLogs.txt
-
-    #checks message content for the words !slotpt and responds with the contents of the commands file
-
     #cheakc message content for the words !slotspt and responds with the slots pay table
     if msg.startswith("!slotspt"):
         if str(message.guild) == 'None':
@@ -670,39 +685,14 @@ async def on_message(message):
 
     #end of gamba section
 
-    # if "crazy" in msg or "Crazy" in msg:
-    #     if str(message.guild) == 'None':
-    #         write_file(message_author, RAW_MSG, command=msg)
-    #         await message.channel.send(f"Crazy? i was crazy once they locked me in a room, a rubber room, a rubber room with rats")
-    #         print("message responded")
-    #     elif check_channel(guild_id, channel_id, message_author):
-    #         write_file(message_author, RAW_MSG, guild_name, msg)
-    #         await message.channel.send(f"Crazy? i was crazy once they locked me in a room, a rubber room, a rubber room with rats")
-    #     else:
-    #         return
 
-    #minecraft server commands
-
-    #gives the ip address as spoiler
-    if msg == "!ip":
-        if message.guild is None:
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send("You cannot do this outside of the server")
-            print("message responded")           
-        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            await message.channel.send("||68.12.58.197||")
-            print("message responded")
-
-
-    #end of minecraft server commands
-        
     if msg == "give verify":
         role = get(message.guild.roles, name='Verified')
         await message.author.add_roles(role)
         await message.channel.send("problem solved?")
         print("message responded")
 
+    #text to speech section
     if msg == "!join":
         if str(message.guild) == "None":
             write_file(message_author, RAW_MSG, command=msg)

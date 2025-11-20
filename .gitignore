@@ -181,4 +181,4 @@ cython_debug/
 pandasTest.py
 *.png
 CiCo_unit_test.py
-userSettings.csv
+*.csv
