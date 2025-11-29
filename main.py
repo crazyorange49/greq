@@ -350,6 +350,19 @@ async def start(interaction: discord.Interaction):
                 print(f"Error: {e}")
             print("message responded")
 
+@tree.command(name="/")
+async def slash(interaction: discord.Interaction, command: str):
+    """Sends a command to the Minecraft server console."""
+    if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):         
+            write_file(interaction.user, 'SLASH COMMAND', interaction.guild, f'/{command}')
+            if server_process and server_process.returncode is None:
+                server_process.stdin.write(f"/{command}\n".encode())
+                await server_process.stdin.drain()
+                await interaction.response.send_message(f"Command '/{command}' sent to the server.")
+            else:
+                await interaction.response.send_message("The server is not running. Cannot send command.")
+            print("message responded")
+
 @tree.command(name="ip")
 async def ip(interaction: discord.Interaction):
     """Checks the IP address of the Minecraft server."""
