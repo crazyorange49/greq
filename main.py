@@ -300,9 +300,9 @@ async def online(interaction: discord.Interaction):
                         image_file.crop((8, 8, 16, 16)).save("skin.png")
                         image_file.close()
                         image_file = Image.open("skin.png")
-                        image_file.resize((128, 128), resample=Image.NEAREST).save("Emojis/player.png")
+                        image_file.resize((128, 128), resample=Image.NEAREST).save(f"{player}.png")
                         image_file.close()
-                        await Emoji_guild.create_custom_emoji(name=player, image= open(f"Emojis/{player}.png", "rb").read())
+                        await Emoji_guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
                         player_emoji = discord.utils.get(client_emojis, name=player)
                         players[players.index(player)] = f"{player_emoji}{player}"
             online = json_status["players"]["online"]
