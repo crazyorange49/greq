@@ -350,7 +350,7 @@ async def start(interaction: discord.Interaction):
                 print(f"Error: {e}")
             print("message responded")
 
-@tree.command(name="/")
+@tree.command(name="command")
 async def slash(interaction: discord.Interaction, command: str):
     """Sends a command to the Minecraft server console."""
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):         
