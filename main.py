@@ -229,6 +229,7 @@ async def MC_Server_Proccess(interaction: discord.Interaction):
     """Subprocess running the minecraft server"""
     global server_process
     startup_script_path = os.getenv('STARTUP_PATH')
+    global server_process
     if server_process and server_process.returncode is None:
             await interaction.response.send_message("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
             print("message responded") 
