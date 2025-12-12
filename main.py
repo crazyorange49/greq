@@ -225,6 +225,7 @@ def slots_calculations(spins, message_authorID):
     else:
         return
 
+server_process = None
 async def MC_Server_Proccess(interaction: discord.Interaction):
     """Subprocess running the minecraft server"""
     startup_script_path = os.getenv('STARTUP_PATH')
@@ -254,7 +255,7 @@ babyYoda_memes = ["https://cdn.discordapp.com/attachments/1162221035505066084/11
 slots_payTable = 'BAR\tBAR\tBAR\t\tpays\t$254\nBELL\tBELL\tBELL\tpays\t$24\nPLUM\tPLUM\tPLUM\tpays\t$18\nORANGE\tORANGE\tORANGE\tpays\t$14\nCHERRY\tCHERRY\tCHERRY\t\tpays\t$11\nCHERRY\tCHERRY\t  -\t\tpays\t$9\nCHERRY\t  -\t  -\t\tpays\t$6'
 ITEMS = ["CHERRY", "LEMON", "ORANGE", "PLUM", "BELL", "BAR"]
 
-server_process = None
+
 global voice_channel
 voice_channel = None
 joinee = None
