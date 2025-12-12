@@ -225,6 +225,10 @@ def slots_calculations(spins, message_authorID):
     else:
         return
 
+def start_server(interaction: discord.Interaction):
+    """just her because run can be used inside a coruotine"""
+    asyncio.run(MC_Server_Proccess(interaction))
+
 async def MC_Server_Proccess(interaction: discord.Interaction):
     """Subprocess running the minecraft server"""
     startup_script_path = os.getenv('STARTUP_PATH')
@@ -346,7 +350,7 @@ async def start(interaction: discord.Interaction):
     startup_script_path = os.getenv('STARTUP_PATH')
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
         write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/start')
-        asyncio.run(MC_Server_Proccess(interaction))
+        start_server(interaction)
         
 
 @tree.command(name="command")
