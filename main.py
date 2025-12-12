@@ -358,9 +358,9 @@ async def slash(interaction: discord.Interaction, command: str):
             if server_process and server_process.returncode is None:
                 server_process.stdin.write(f"{command}\n".encode())
                 await server_process.stdin.drain()
-                output = server_process.stdout.readline()
+                output = await server_process.stdout.readline()
                 await interaction.response.send_message(f"Command '/{command}' sent to the server.")
-                await interaction.response.send_message(f"Server Response: {output}")
+                await interaction.response.send_message(f"Server Response: {output.decode().strip()}")
             else:
                 await interaction.response.send_message("The server is not running. Cannot send command.")
             print("message responded")
