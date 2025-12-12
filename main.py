@@ -227,6 +227,7 @@ def slots_calculations(spins, message_authorID):
 
 async def MC_Server_Proccess(interaction: discord.Interaction):
     """Subprocess running the minecraft server"""
+    global output
     global server_process
     startup_script_path = os.getenv('STARTUP_PATH')
     global server_process
@@ -246,6 +247,7 @@ async def MC_Server_Proccess(interaction: discord.Interaction):
         # Read stdout and stderr asynchronously
         async for line in server_process.stdout:
             print(f"STDOUT: {line.decode().strip()}")
+            output = line
 
         async for line in server_process.stderr:
             print(f"STDERR: {line.decode().strip()}")
@@ -257,6 +259,7 @@ slots_payTable = 'BAR\tBAR\tBAR\t\tpays\t$254\nBELL\tBELL\tBELL\tpays\t$24\nPLUM
 ITEMS = ["CHERRY", "LEMON", "ORANGE", "PLUM", "BELL", "BAR"]
 
 server_process = None
+output = None
 global voice_channel
 voice_channel = None
 joinee = None
@@ -354,11 +357,11 @@ async def start(interaction: discord.Interaction):
 @tree.command(name="command")
 async def slash(interaction: discord.Interaction, command: str):
     """Sends a command to the Minecraft server console."""
+    global output
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):         
             write_file(interaction.user, 'SLASH COMMAND', interaction.guild, f'/{command}')
             if server_process and server_process.returncode is None:
                 server_process.stdin.write(f"{command}\n".encode())
-                output = await server_process.stdout[-1]
                 await server_process.stdin.drain()
                 await interaction.response.send_message(f"Command '/{command}' sent to the server.")
                 await interaction.response.send_message(f"Server Response: {output.decode().strip()}")
