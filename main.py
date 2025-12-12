@@ -225,6 +225,29 @@ def slots_calculations(spins, message_authorID):
     else:
         return
 
+async def MC_Server_Proccess(interaction: discord.Interaction):
+    """Subprocess running the minecraft server"""
+    startup_script_path = os.getenv('STARTUP_PATH')
+    if server_process and server_process.returncode is None:
+            await interaction.response.send_message("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
+            print("message responded") 
+    else:
+        # Start the process
+        server_process = await asyncio.create_subprocess_exec(
+            "bash", startup_script_path,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        await interaction.response.send_message("Server starting up. Please wait a moment.")
+
+        # Read stdout and stderr asynchronously
+        async for line in server_process.stdout:
+            print(f"STDOUT: {line.decode().strip()}")
+
+        async for line in server_process.stderr:
+            print(f"STDERR: {line.decode().strip()}")
+    print("message responded")
 
 
 babyYoda_memes = ["https://cdn.discordapp.com/attachments/1162221035505066084/1162223866609946664/IMG_1700.jpg?ex=653b2852&is=6528b352&hm=398ddc74ec70b33e270e55fbd7e3f5cc228b8fbab21c789fed61cc1749f6f52c&", "https://cdn.discordapp.com/attachments/1162221035505066084/1162223866257604669/IMG_1701.jpg?ex=653b2852&is=6528b352&hm=92f956ff09b973ad16096ee234ca251a99efa7350ec655c316dffbe6f3e4be7e&", "https://cdn.discordapp.com/attachments/1162221035505066084/1162223504574402570/IMG_4378.jpg?ex=653b27fc&is=6528b2fc&hm=882fac6f1c1dc1704a26a1eabaaf5f9380712dc6a6ed510edd75a583ee8024d7&", "https://images.squarespace-cdn.com/content/v1/52df0e63e4b07360a57e5bb8/1575836269357-3JO98844S7S7U6Z05XLE/Baby+Yoda+Work+.png?format=1500w", "https://hips.hearstapps.com/hmg-prod/images/baby-yoda-pope-1574183303.jpeg?crop=1xw:0.7398452611218569xh;center,top&resize=1200:*", "https://pbs.twimg.com/media/Enuta6UVEAAE4WD?format=jpg&name=900x900", "https://wkml.com/wp-content/uploads/sites/53/2019/12/Baby-Yoda-Memes-4-297x300.jpg", ]
@@ -323,32 +346,8 @@ async def start(interaction: discord.Interaction):
     startup_script_path = os.getenv('STARTUP_PATH')
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
         write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/start')
-        global server_process
-        if server_process and server_process.returncode is None:
-            await interaction.response.send_message("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
-            print("message responded") 
-        else:
-            try:
-                # Start the process
-                server_process = await asyncio.create_subprocess_exec(
-                    "bash", startup_script_path,
-                    stdin=asyncio.subprocess.PIPE,
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE
-                )
-                await interaction.response.send_message("Server starting up. Please wait a moment.")
-
-                # Read stdout and stderr asynchronously
-                async for line in server_process.stdout:
-                    print(f"STDOUT: {line.decode().strip()}")
-
-                async for line in server_process.stderr:
-                    print(f"STDERR: {line.decode().strip()}")
-
-            except Exception as e:
-                await interaction.response.send_message(f"Error starting server: {e}")
-                print(f"Error: {e}")
-            print("message responded")
+        asyncio.run(MC_Server_Proccess(interaction))
+        
 
 @tree.command(name="command")
 async def slash(interaction: discord.Interaction, command: str):
@@ -356,7 +355,7 @@ async def slash(interaction: discord.Interaction, command: str):
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):         
             write_file(interaction.user, 'SLASH COMMAND', interaction.guild, f'/{command}')
             if server_process and server_process.returncode is None:
-                output, inputs = await server_process.communicate(f"{command}\n")
+                output, input = await server_process.communicate(f"{command}\n")
                 await interaction.response.send_message(f"Command '/{command}' sent to the server.")
                 await interaction.response.send_message(f"Server Response: {output.decode().strip()}")
             else:
