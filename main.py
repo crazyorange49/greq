@@ -358,7 +358,7 @@ async def slash(interaction: discord.Interaction, command: str):
             write_file(interaction.user, 'SLASH COMMAND', interaction.guild, f'/{command}')
             if server_process and server_process.returncode is None:
                 server_process.stdin.write(f"{command}\n".encode())
-                output = await server_process.stdout.readuntil(b'\n')
+                output = await server_process.stdout[-1]
                 await server_process.stdin.drain()
                 await interaction.response.send_message(f"Command '/{command}' sent to the server.")
                 await interaction.response.send_message(f"Server Response: {output.decode().strip()}")
