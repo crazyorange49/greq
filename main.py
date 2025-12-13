@@ -313,6 +313,7 @@ async def online(interaction: discord.Interaction):
         if server_process and server_process.returncode is None:
             global output
             server_process.stdin.write(f"list\n".encode())
+            await server_process.stdin.drain()
             server_process.stdin.write(f"list\n".encode())
             await server_process.stdin.drain()
             output = re.sub(r'\x1b\[[0-9;]*m', '', output.decode().strip())
