@@ -314,8 +314,7 @@ async def online(interaction: discord.Interaction):
             global output
             server_process.stdin.write(f"list\n".encode())
             await server_process.stdin.drain()
-            server_process.stdin.write(f"list\n".encode())
-            await server_process.stdin.drain()
+            await asyncio.sleep(1)
             output = re.sub(r'\x1b\[[0-9;]*m', '', output.decode().strip())
             number_of_players = output.split("There are ")[1].split(" of a max")[0].strip()
             players = output.split("players online: ")[1].strip().split(", ")
