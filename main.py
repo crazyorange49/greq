@@ -247,7 +247,7 @@ async def MC_Server_Proccess(interaction: discord.Interaction):
         # Read stdout and stderr asynchronously
         async for line in server_process.stdout:
             print(f"STDOUT: {line.decode().strip()}")
-            output = line
+            output = await line
 
         async for line in server_process.stderr:
             print(f"STDERR: {line.decode().strip()}")
@@ -305,14 +305,18 @@ async def settings(interaction: discord.Interaction,
 @tree.command(name="online")
 async def online(interaction: discord.Interaction):
     """Checks the online status of the Minecraft server and returns the list of online players."""
-    server_ip = os.getenv('Server_IP')
+    startup_script_path = os.getenv('STARTUP_PATH')
+    server_config_path = startup_script_path.replace("Startup.sh", "server.properties")
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
         write_file(interaction.user, '/online', interaction.guild, '/online')
         Emoji_guild = client.get_guild(938325287333154896)
         if server_process and server_process.returncode is None:
-            status = requests.get(f"https://api.mcsrvstat.us/3/{server_ip}:25565")
-            json_status = status.json()
-            players = [player['name'] for player in json_status['players']['list']]
+            global output
+            server_process.stdin.write(f"list\n".encode())
+            await server_process.stdin.drain()
+            output = re.sub(r'\x1b\[[0-9;]*m', '', output.decode().strip())
+            number_of_players = output.split("There are ")[1].split(" of a max")[0].strip()
+            players = output.split("players online: ")[1].strip().split(", ")
             client_emojis = Emoji_guild.emojis
             for player in players:
                     if player in [emoji.name for emoji in client_emojis]:
@@ -333,12 +337,19 @@ async def online(interaction: discord.Interaction):
                         await Emoji_guild.create_custom_emoji(name=player, image= open(f"{player}.png", "rb").read())
                         player_emoji = discord.utils.get(client_emojis, name=player)
                         players[players.index(player)] = f"{player_emoji}{player}"
-            online = json_status["players"]["online"]
             thumbnail_url = "https://i.ibb.co/gbXqwpq9/image.png"
-            embed_description = json_status["motd"]["clean"][0] if json_status["motd"]["clean"] else "No MOTD available"
+            motd = ""
+            with open(server_config_path, 'r') as file:
+                data = file.readlines()
+                for line in data:
+                    if "motd=" in line:
+                        motd = line.strip().split("motd=")[1]
+                    else:
+                        motd = "No MOTD available"
+            embed_description = motd
             online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
             online_embed.set_thumbnail(url=thumbnail_url)
-            online_embed.add_field(name="Online Players", value=str(online), inline=True)
+            online_embed.add_field(name="Online Players", value=str(number_of_players), inline=True)
             online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
             await interaction.response.send_message(embed=online_embed)
         else:
