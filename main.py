@@ -3,17 +3,14 @@ import os
 import sys
 import random
 import discord
-from click import pass_context
 from discord import app_commands, VoiceClient
 from dotenv import load_dotenv
 import requests
 import asyncio
-import psutil
 from datetime import datetime
 from discord.utils import get
 from gpio import cleanup
 import pyttsx3
-# import ollama
 import re
 import pandas as pd
 import datetime
@@ -100,30 +97,6 @@ def write_file(user, message, server="DM", command="none"):
                 file.writelines(data)
         except ValueError:
             return
-
-
-#adds an event to Events.txt
-def create_event(event, date):
-    with open('Events.txt', 'a') as events:
-        events.write(f"{event}: {date} \n")
-#deletes an event from Events.txt
-def del_event(event):
-    with open('Events.txt', 'r') as events:
-        data = events.readlines()
-    del data[event - 1]
-    with open("Events.txt", 'w') as events:
-        events.writelines(data)
-#reads all events in Events.txt
-def read_events():   
-    final_read = ""
-    with open('Events.txt', 'r') as events:
-        data = events.readlines()
-    for x in range(len(data)):
-        data_storage = data[x]
-        final_read += f"{x + 1}. {data_storage}"
-    return final_read
-
-
 
 #checks is user is available in GambaLogs.txt
 def check_user(author_id):
@@ -300,7 +273,7 @@ async def settings(interaction: discord.Interaction,
     minecraft_id = minecraft_channel.id if minecraft_channel else None
     tts_id = tts_channel.id if tts_channel else None
     responce = settingsSetter(guild_id, gamba_id, minecraft_id, tts_id)
-    await interaction.response.send_message(responce)
+    await interaction.response.send_message(responce, ephemeral=True)
 
 @tree.command(name="online")
 async def online(interaction: discord.Interaction):
@@ -358,7 +331,7 @@ async def online(interaction: discord.Interaction):
             online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
             await interaction.response.send_message(embed=online_embed)
         else:
-            await interaction.response.send_message("The server is not running.")
+            await interaction.response.send_message("The server is not running.", ephemeral=True)
         print("message responded")
 
 @tree.command(name="start")
@@ -367,21 +340,6 @@ async def start(interaction: discord.Interaction):
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
         write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/start')
         await MC_Server_Proccess(interaction)
-        
-
-@tree.command(name="command")
-async def slash(interaction: discord.Interaction, command: str):
-    """Sends a command to the Minecraft server console."""
-    global output
-    if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):         
-            write_file(interaction.user, 'SLASH COMMAND', interaction.guild, f'/{command}')
-            if server_process and server_process.returncode is None:
-                server_process.stdin.write(f"{command}\n".encode())
-                await server_process.stdin.drain()
-                await interaction.response.send_message(f"Server Response: {output.decode().strip()}")
-            else:
-                await interaction.response.send_message("The server is not running. Cannot send command.")
-            print("message responded")
 
 @tree.command(name="ip")
 async def ip(interaction: discord.Interaction):
@@ -389,7 +347,7 @@ async def ip(interaction: discord.Interaction):
     server_ip = os.getenv('Server_IP')
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):         
             write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/ip')
-            await interaction.response.send_message(f"The server IP address is: ||{server_ip}||")
+            await interaction.response.send_message(f"The server IP address is: ||{server_ip}||", ephemeral=True)
             print("message responded")
 
 #shash command for gambling and responds with the message authors money stored in GambaLogs.txt
@@ -421,7 +379,6 @@ async def on_voice_state_update(member, before, after):
 #reading messages and respond
 @client.event
 async def on_message(message):
-    global server_process
     
     #checks if the message is from the bot
     if message.author == client.user:
@@ -431,7 +388,6 @@ async def on_message(message):
         print("message read")
         msg = message.content.lower()
         RAW_MSG = message.content
-        user = discord.utils.get(client.guilds[0].members, id=message.author.id)
         message_author = message.author
         message_authorID = message.author.id
         #gets guild information
@@ -439,7 +395,7 @@ async def on_message(message):
             channel_id = str(message.channel.id)
             guild_id = str(message.guild.id)
             guild_name = str(message.guild)
-        print(f"{message_author}: {RAW_MSG}, channel id: {channel_id}")
+        #print(f"{message_author}: {RAW_MSG}, channel id: {channel_id}")
         
     #checks message content for the word cat and gives a random image of a cat                     
     if msg == "cat":
@@ -534,103 +490,6 @@ async def on_message(message):
     if msg == "!arrest" and message_authorID == 851651703413669938:
         await message.channel.send("Rats!, foiled again.")
         sys.exit(1)
-    
-    #events section
-    #checks for a messages that starts with !addevent and looks for an event name and date if there is no date detected it will send an error message
-    if msg.startswith('!addevent'):
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            res = msg.split()
-            event = ""
-            for i in range(1, len(res)):
-                if res[i] == "date":
-                    break
-                event += res[i] + " "
-            event = event.strip()
-            res = msg.split("date ", 1)
-            if len(res) > 1:
-                dateAndTime = res[1]
-                create_event(event, dateAndTime)
-                await message.channel.send(f"event created: {event}")
-                print("message responded")
-            else:
-                await message.channel.send(f"it seems you entered the command wrong !help for more commands")
-            
-        elif check_channel(guild_id, channel_id, message_author):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            res = msg.split()
-            event = ""
-            for i in range(1, len(res)):
-                if res[i] == "date":
-                    break
-                event += res[i] + " "
-            event = event.strip()
-            res = msg.split("date ", 1)
-            if len(res) > 1:
-                dateAndTime = res[1]
-                create_event(event, dateAndTime)
-                await message.channel.send(f"event created: {event}")
-                print("message responded")
-            else:
-                await message.channel.send(f"it seems you entered the command wrong !help for more commands")
-                print("message responded")
-        else:
-            return
-    #checks message content for the words !events and gives the list of events
-    if msg == "!events":
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send(read_events())
-            print("message responded")           
-        elif check_channel(guild_id, channel_id, message_author):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            await message.channel.send(read_events())
-            print("message responded")
-        else:
-            return
-    #checks message content for the words !delevent and a number to delete the corresponding event
-    if msg.startswith("!delevent"):
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            res = msg.split()
-            event_index = int(res[1])
-            if event_index >= 1:
-                del_event(event_index)
-                await message.channel.send(f"event {event_index} deleted")
-            print("message responded")           
-        elif check_channel(guild_id, channel_id, message_author):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            res = msg.split()
-            event_index = int(res[1])
-            if event_index >= 1:
-                del_event(event_index)
-                await message.channel.send(f"event {event_index} deleted")
-            print("message responded")
-        else:
-            return
-    
-    #checks message content for the words !help and responds with the contents of the commands file
-    if msg == "!help":
-        if str(message.guild) == 'None':
-            write_file(message_author, RAW_MSG, command=msg)
-            commands_help = ""
-            with open('Commands.txt', 'r')as file:             
-                 data = file.readlines()
-            for x in data:
-                commands_help += x
-            await message.channel.send(commands_help)
-            print("message responded")           
-        elif check_channel(guild_id, channel_id, message_author):
-            write_file(message_author, RAW_MSG, guild_name, msg)
-            commands_help = ""
-            with open('Commands.txt', 'r')as file:             
-                 data = file.readlines()
-            for x in data:
-                commands_help += x
-            await message.channel.send(commands_help)
-            print("message responded")
-        else:
-            return
     
     #gamba section
     #checks message content for the words !gamba and responds with the contents of the GambaCommands file
@@ -754,25 +613,5 @@ async def on_message(message):
             engine.runAndWait()
             vc.play(discord.FFmpegPCMAudio("Voice.mp3"))
             engine.stop()
-    
-    # if msg.startswith("<@1149848512469676082>"):
-    #     if str(message.guild) == 'None':
-    #         write_file(message_author, RAW_MSG, command=msg)
-    #         await message.channel.send("Feature not supported here")
-    #         print("Message responded")           
-    #     elif check_channel(guild_id, channel_id, message_author, gamba=True):
-    #         write_file(message_author, RAW_MSG, guild_name, msg)
-    #         GREQ = "your name is greq also known in computer language as <@1149848512469676082>. you do you best to only respong within 600 characters now you are amaericas most wanted, banned from walmarts across the U.S for building forts in the shelves. you are trapped in a dsicord server full of people who warship you but you like to banter and be insulting in the funniest way possible, remember you are a criminal on the run" 
-    #         response = ollama.chat(model='deepseek-r1:7b', messages=[
-    #             {
-    #                 'role': 'user',
-    #                 'content': f'respond within 600 characters please this is your prompt: {msg}'    
-    #             }
-    #         ])
-    #         greqResponce = response['message']['content']
-    #         greqResponceFormatted = re.sub(r"<think>.*?</think>", "", greqResponce, flags=re.DOTALL)
-    #         print(greqResponceFormatted)
-    #         await message.channel.send(greqResponceFormatted)
-    #         print("Message responded")
 
 client.run(TOKEN)
