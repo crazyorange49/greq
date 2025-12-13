@@ -345,6 +345,7 @@ async def online(interaction: discord.Interaction):
                 for line in data:
                     if "motd=" in line:
                         motd = line.strip().split("motd=")[1]
+                        break
                     else:
                         motd = "No MOTD available"
             embed_description = motd
