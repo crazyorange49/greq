@@ -609,7 +609,7 @@ async def on_message(message):
                 file.write(msg)
             subprocess.call(["text2wave", f"{tts_path}/text.txt", "-o", f"{tts_path}/Voice.wav"])
             vc.play(discord.FFmpegPCMAudio(f"{tts_path}Voice.mp3"))
-            engine.stop()
+            vc.stop()
         else:
             await message.channel.send("message too long for tts")
             print("message responded")
