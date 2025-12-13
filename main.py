@@ -247,7 +247,7 @@ async def MC_Server_Proccess(interaction: discord.Interaction):
         # Read stdout and stderr asynchronously
         async for line in server_process.stdout:
             print(f"STDOUT: {line.decode().strip()}")
-            output = await line
+            output = line
 
         async for line in server_process.stderr:
             print(f"STDERR: {line.decode().strip()}")
@@ -312,6 +312,7 @@ async def online(interaction: discord.Interaction):
         Emoji_guild = client.get_guild(938325287333154896)
         if server_process and server_process.returncode is None:
             global output
+            server_process.stdin.write(f"list\n".encode())
             server_process.stdin.write(f"list\n".encode())
             await server_process.stdin.drain()
             output = re.sub(r'\x1b\[[0-9;]*m', '', output.decode().strip())
