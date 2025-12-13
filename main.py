@@ -604,11 +604,10 @@ async def on_message(message):
         if len(msg) < 500:
             tts_path = os.getenv('TTS_PATH')
             msg.replace("sabrin", "Saabreen")
-            with open("text.txt", 'w') as file:
+            with open(f"{tts_path}/text.txt", 'w') as file:
                 file.write(msg)
-            subprocess.call(["text2wave", f"{tts_path}/text.txt", "-o", f"{tts_path}/Voice.wav"])
-            vc.play(discord.FFmpegPCMAudio(f"{tts_path}Voice.mp3"))
-            vc.stop()
+            subprocess.call(["text2wave", f"{tts_path}/text.txt", "-o", f"{tts_path}/Voice.mp3"])
+            vc.play(discord.FFmpegPCMAudio(f"{tts_path}/Voice.mp3"))
         else:
             await message.channel.send("message too long for tts")
             print("message responded")

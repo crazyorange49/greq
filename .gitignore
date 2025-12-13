@@ -182,3 +182,4 @@ pandasTest.py
 *.png
 CiCo_unit_test.py
 *.csv
+tts_folder/Voice.mp3
