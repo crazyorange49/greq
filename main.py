@@ -369,17 +369,16 @@ async def join(interaction: discord.Interaction):
     global vc
     global joinee
     global voice_channel
-    message_author = interaction.user
-    if check_channel(interaction.guild.id, interaction.channel.id, message_author, tts=True):         
-            write_file(message_author, "SLASH COMMAND", interaction.guild, "/join")
-            if message_author.voice is None:
-                await interaction.response.send_message("you need to be in a vc", ephemeral=True)
-            else:
-                voice_channel = message_author.voice.channel
-                joinee = message_author
-                vc = await voice_channel.connect()
-                await interaction.response.send_message(f"joined {voice_channel}", ephemeral=True)
-                print(f" vc id: {voice_channel.id}")
+    message_author = interaction.user        
+    write_file(message_author, "SLASH COMMAND", interaction.guild, "/join")
+    if message_author.voice is None:
+        await interaction.response.send_message("you need to be in a vc", ephemeral=True)
+    else:
+        voice_channel = message_author.voice.channel
+        joinee = message_author
+        vc = await voice_channel.connect()
+        await interaction.response.send_message(f"joined {voice_channel}", ephemeral=True)
+        print(f" vc id: {voice_channel.id}")
 
 @client.event
 async def on_voice_state_update(member, before, after):
