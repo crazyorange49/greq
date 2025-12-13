@@ -289,7 +289,7 @@ async def online(interaction: discord.Interaction):
             await server_process.stdin.drain()
             await asyncio.sleep(1)
             output = re.sub(r'\x1b\[[0-9;]*m', '', output.decode().strip())
-            if len(output.split("players online: ")) > 1:
+            if len(output.split("players online: ")) < 2:
                 await interaction.response.send_message("The server is running but no players are online.")
                 return
             number_of_players = output.split("There are ")[1].split(" of a max")[0].strip()
