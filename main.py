@@ -16,6 +16,7 @@ import pandas as pd
 import datetime
 import base64
 import json
+import subprocess
 from PIL import Image
 
 
@@ -238,8 +239,6 @@ voice_channel = None
 joinee = None
 engine = pyttsx3.init()
 global client_settings
-# ollama.pull("deepseek-r1:7b")
-
 
 #bot start up process
 load_dotenv()
@@ -275,6 +274,7 @@ async def settings(interaction: discord.Interaction,
     responce = settingsSetter(guild_id, gamba_id, minecraft_id, tts_id)
     await interaction.response.send_message(responce, ephemeral=True)
 
+# minecraft server commands
 @tree.command(name="online")
 async def online(interaction: discord.Interaction):
     """Checks the online status of the Minecraft server and returns the list of online players."""
@@ -362,6 +362,24 @@ async def money(interaction: discord.Interaction):
             else:
                 await interaction.response.send_message(f"either an error occurred or user {message_author} doesnt exists")
             print("message responded")
+
+@tree.command(name="join")
+async def join(interaction: discord.Interaction):
+    """Joins the voice channel of the user."""
+    global vc
+    global joinee
+    global voice_channel
+    message_author = interaction.user
+    if check_channel(interaction.guild.id, interaction.channel.id, message_author, tts=True):         
+            write_file(message_author, "SLASH COMMAND", interaction.guild, "/join")
+            if message_author.voice is None:
+                await interaction.response.send_message("you need to be in a vc", ephemeral=True)
+            else:
+                voice_channel = message_author.voice.channel
+                joinee = message_author
+                vc = await voice_channel.connect()
+                await interaction.response.send_message(f"joined {voice_channel}", ephemeral=True)
+                print(f" vc id: {voice_channel.id}")
 
 @client.event
 async def on_voice_state_update(member, before, after):
@@ -577,41 +595,23 @@ async def on_message(message):
 
     #end of gamba section
 
-
     if msg == "give verify":
         role = get(message.guild.roles, name='Verified')
         await message.author.add_roles(role)
         await message.channel.send("problem solved?")
         print("message responded")
 
-    #text to speech section
-    if msg == "!join":
-        if str(message.guild) == "None":
-            write_file(message_author, RAW_MSG, command=msg)
-            await message.channel.send('command unavalible')
-        elif check_channel(guild_id, channel_id, message_author, minecraft=True):
-            global vc
-            global joinee
-            global voice_channel
-            write_file(message_author, RAW_MSG, command=msg)
-            if message_author.voice is None:
-                await message.channel.send("you need to be in a vc")
-            else:
-                voice_channel = message_author.voice.channel
-                joinee = message_author
-                vc = await voice_channel.connect()
-                print(f" vc id: {voice_channel.id}")
     if voice_channel is not None and channel_id == str(voice_channel.id):
         if len(msg) < 500:
-            msg.replace("sabrin", "suhbreen")
-            engine.save_to_file(f"{message_author} says {msg}", "Voice.mp3")
-            engine.runAndWait()
-            vc.play(discord.FFmpegPCMAudio("Voice.mp3"))
+            tts_path = os.getenv('TTS_PATH')
+            msg.replace("sabrin", "Saabreen")
+            with open("text.txt", 'w') as file:
+                file.write(msg)
+            subprocess.call(["text2wave", f"{tts_path}/text.txt", "-o", f"{tts_path}/Voice.wav"])
+            vc.play(discord.FFmpegPCMAudio(f"{tts_path}Voice.mp3"))
             engine.stop()
         else:
-            engine.save_to_file("fuck you", "Voice.mp3")
-            engine.runAndWait()
-            vc.play(discord.FFmpegPCMAudio("Voice.mp3"))
-            engine.stop()
+            await message.channel.send("message too long for tts")
+            print("message responded")
 
 client.run(TOKEN)
