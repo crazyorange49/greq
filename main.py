@@ -396,7 +396,7 @@ async def on_voice_state_update(member, before, after):
 #reading messages and respond
 @client.event
 async def on_message(message):
-    
+    global joinee
     #checks if the message is from the bot
     if message.author == client.user:
         return
@@ -600,7 +600,7 @@ async def on_message(message):
         await message.channel.send("problem solved?")
         print("message responded")
 
-    if voice_channel is not None and channel_id == str(voice_channel.id):
+    if voice_channel is not None and channel_id == str(voice_channel.id) and message_author == joinee:
         if len(msg) < 500:
             tts_path = os.getenv('TTS_PATH')
             msg.replace("sabrin", "Saabreen")
