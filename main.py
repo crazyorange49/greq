@@ -391,7 +391,7 @@ async def join(interaction: discord.Interaction):
     write_file(message_author, "SLASH COMMAND", interaction.guild, "/join")
     if message_author.voice is None:
         await interaction.response.send_message("you need to be in a vc", ephemeral=True)
-    else:
+    elif joinee is not None:
         voice_channel = message_author.voice.channel
         joinee = message_author
         vc = await voice_channel.connect()
@@ -399,6 +399,8 @@ async def join(interaction: discord.Interaction):
         # await client.change_presence(status=discord.Status.online, activity=game)
         await interaction.response.send_message(f"joined {voice_channel}", ephemeral=True)
         print(f" vc id: {voice_channel.id}")
+    else:
+        await interaction.response.send_message(f"i am already in use by {joinee}", ephemeral=True)
 
 @client.event
 async def on_voice_state_update(member, before, after):
@@ -621,7 +623,7 @@ async def on_message(message):
         print("message responded")
 
     if voice_channel is not None and channel_id == str(voice_channel.id) and message_author == joinee:
-        if len(msg) < 500:
+        if len(msg) < 500 and not "http" in msg and not ".com" in msg:
             tts_path = os.getenv('TTS_PATH')
             msg.replace("sabrin", "Saabreen")
             with open(f"{tts_path}/text.txt", 'w') as file:
