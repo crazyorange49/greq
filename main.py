@@ -382,7 +382,7 @@ async def join(interaction: discord.Interaction):
         await interaction.response.send_message(f"joined {voice_channel}", ephemeral=True)
         print(f" vc id: {voice_channel.id}")
     else:
-        await interaction.response.send_message("bot is already in use", ephemeral=True)
+        await interaction.response.send_message(f"bot is already in use by {joinee}", ephemeral=True)
 
 @client.event
 async def on_voice_state_update(member, before, after):
