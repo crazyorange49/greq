@@ -373,16 +373,14 @@ async def join(interaction: discord.Interaction):
     write_file(message_author, "SLASH COMMAND", interaction.guild, "/join")
     if message_author.voice is None:
         await interaction.response.send_message("you need to be in a vc", ephemeral=True)
-    elif joinee is not "None":
+    else:
         voice_channel = message_author.voice.channel
         joinee = message_author
         vc = await voice_channel.connect()
-        game = discord.Game(f"speaking for {joinee}")
-        await client.change_presence(status=discord.Status.online, activity=game)
+        # game = discord.Game(f"speaking for {joinee}")
+        # await client.change_presence(status=discord.Status.online, activity=game)
         await interaction.response.send_message(f"joined {voice_channel}", ephemeral=True)
         print(f" vc id: {voice_channel.id}")
-    else:
-        await interaction.response.send_message(f"bot is already in use by {joinee}", ephemeral=True)
 
 @client.event
 async def on_voice_state_update(member, before, after):
