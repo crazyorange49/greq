@@ -363,6 +363,24 @@ async def money(interaction: discord.Interaction):
                 await interaction.response.send_message(f"either an error occurred or user {message_author} doesnt exists")
             print("message responded")
 
+@tree.command(name="leave")
+async def leave(interaction: discord.Interaction):
+    """Leaves the voice channel."""
+    global vc
+    global joinee
+    global voice_channel
+    message_author = interaction.user        
+    write_file(message_author, "SLASH COMMAND", interaction.guild, "/leave")
+    if voice_channel is None:
+        await interaction.response.send_message("I am not in a vc", ephemeral=True)
+    else:      
+ 
+        voice_channel = None
+        joinee = None
+        await vc.disconnect(force=True)
+        cleanup()
+        await interaction.response.send_message(f"left {voice_channel}", ephemeral=True)
+
 @tree.command(name="join")
 async def join(interaction: discord.Interaction):
     """Joins the voice channel of the user."""
