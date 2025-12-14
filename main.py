@@ -3,7 +3,7 @@ import os
 import sys
 import random
 import discord
-from discord import app_commands, VoiceClient
+from discord import app_commands
 from dotenv import load_dotenv
 import requests
 import asyncio
