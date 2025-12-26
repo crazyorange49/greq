@@ -391,7 +391,7 @@ async def join(interaction: discord.Interaction):
     write_file(message_author, "SLASH COMMAND", interaction.guild, "/join")
     if message_author.voice is None:
         await interaction.response.send_message("you need to be in a vc", ephemeral=True)
-    elif joinee is not None:
+    elif joinee != "None":
         voice_channel = message_author.voice.channel
         joinee = message_author
         vc = await voice_channel.connect()
