@@ -18,6 +18,7 @@ import base64
 import json
 import subprocess
 from PIL import Image
+from LLM_Experimental.Data_collection import DataCollector as DC
 
 
 
@@ -429,6 +430,7 @@ async def on_message(message):
         RAW_MSG = message.content
         message_author = message.author
         message_authorID = message.author.id
+        DC.on_data_received(DC, message)
         #gets guild information
         if str(message.guild) != 'None': 
             channel_id = str(message.channel.id)
