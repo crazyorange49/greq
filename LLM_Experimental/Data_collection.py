@@ -14,14 +14,14 @@ class DataCollector:
             data (list of dict): The data to write to the CSV file.
             mode (str): The file mode, 'a' for append and 'w' for write. Default is 'a'.
         """
-        with open(self.FILE_PATH, mode, newline='') as csvfile:
-            if data:
-                fieldnames = data[0].keys()
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-
-                if mode == 'w':
-                    writer.writeheader()
-                writer.writerows(data)
+        if not data["message"][0] == "/" or data["message"][0] == "!" or "http" in data["message"]:
+            with open(self.FILE_PATH, mode, newline='') as csvfile:
+                if data:
+                    fieldnames = data[0].keys()
+                    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                    if mode == 'w':
+                        writer.writeheader()
+                    writer.writerows(data)
     
     def on_data_received(self, new_data):
         """Callback function to handle new data.
