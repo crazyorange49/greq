@@ -14,7 +14,7 @@ class DataCollector:
             data (list of dict): The data to write to the CSV file.
             mode (str): The file mode, 'a' for append and 'w' for write. Default is 'a'.
         """
-        if not data["message"][0] == "/" or data["message"][0] == "!" or "http" in data["message"]:
+        if data["message"][0] != "/" or data["message"][0] != "!" or "http"  not in data["message"]:
             with open(self.FILE_PATH, mode, newline='') as csvfile:
                 if data:
                     fieldnames = data[0].keys()
