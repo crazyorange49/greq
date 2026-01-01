@@ -32,6 +32,6 @@ class DataCollector:
         channel = new_data.channel.id
         user = new_data.author.name
         message = new_data.content
-        new_data = {'channel': channel, 'user': user, 'message': message}
+        new_data = [{'channel': channel, 'user': user, 'message': message}]
         self.write_data(self, new_data)
 
