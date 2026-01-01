@@ -14,7 +14,7 @@ class DataCollector:
             data (list of dict): The data to write to the CSV file.
             mode (str): The file mode, 'a' for append and 'w' for write. Default is 'a'.
         """
-        if data["message"][0] != "/" or data["message"][0] != "!" or "http"  not in data["message"]:
+        if data[0]["message"][0] != "/" or data[0]["message"][0] != "!" or "http"  not in data[0]["message"]:
             with open(self.FILE_PATH, mode, newline='') as csvfile:
                 if data:
                     fieldnames = data[0].keys()
@@ -32,6 +32,6 @@ class DataCollector:
         channel = new_data.channel.id
         user = new_data.author.name
         message = new_data.content
-        new_data = [{'channel': channel, 'user': user, 'message': message}]
+        new_data = {'channel': channel, 'user': user, 'message': message}
         self.write_data(self, new_data)
 
