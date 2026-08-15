@@ -183,3 +183,5 @@ pandasTest.py
 CiCo_unit_test.py
 *.csv
 tts_folder/Voice.mp3
+LLM_Experimental/Data_collection.py
+userSettings.csv
