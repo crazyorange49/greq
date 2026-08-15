@@ -403,6 +403,16 @@ async def join(interaction: discord.Interaction):
     else:
         await interaction.response.send_message(f"i am already in use by {joinee}", ephemeral=True)
 
+@tree.command(name="users")
+async def users(interaction: discord.Interaction):
+    """lists of users in the server"""
+    users = [member.name for member in interaction.guild.members]
+    users_response = "Users in this server:\n"
+    for member_object in users:
+        users_response += f"- name: {member_object.user.username} id: {member_object.user.id} joined: {member_object.joined_at}\n"
+    await interaction.response.send_message(users_response, ephemeral=True)
+
+
 @client.event
 async def on_voice_state_update(member, before, after):
     global joinee
