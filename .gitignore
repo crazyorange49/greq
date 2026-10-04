@@ -184,3 +184,5 @@ CiCo_unit_test.py
 *.csv
 tts_folder/Voice.mp3
 apiTesting.py
+LLM_Experimental/Data_collection.py
+userSettings.csv

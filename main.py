@@ -385,7 +385,7 @@ async def users(interaction: discord.Interaction):
     """lists of users in the server"""
     users = [member.name for member in interaction.guild.members]
     for member_object in users:
-        users_response += f"- {member_object}\n"
+        users_response += f"- name: {member_object}\n"
     await interaction.response.send_message(users_response, ephemeral=True)
 
 @tree.commmand(name="seach Member")
