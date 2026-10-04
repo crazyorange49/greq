@@ -380,19 +380,6 @@ async def join(interaction: discord.Interaction):
     else:
         await interaction.response.send_message(f"i am already in use by {joinee}", ephemeral=True)
 
-@tree.command(name="users")
-async def users(interaction: discord.Interaction):
-    """lists of users in the server"""
-    users = [member.name for member in interaction.guild.members]
-    for member_object in users:
-        users_response += f"- name: {member_object}\n"
-    await interaction.response.send_message(users_response, ephemeral=True)
-
-@tree.commmand(name="seach Member")
-async def search_member(interaction: discord.Interaction, user_id: discord.Member):
-    """searches for a member in the server"""
-    member = interaction.guild.get_member(user_id.id)
-    await interaction.response.send_message(f"member: {member.name}\n id: {member.id}\n status: {member.status}\n joined at: {member.joined_at}\n bot: {member.bot}", ephemeral=True)
 
 @client.event
 async def on_voice_state_update(member, before, after):
