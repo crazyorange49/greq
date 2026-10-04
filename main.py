@@ -348,7 +348,7 @@ async def start(interaction: discord.Interaction):
         ("The start request was sent. Check `/online` in a moment for the latest status.", discord.Color.gold()),
     )
     start_embed = discord.Embed(
-        title="Cerealbox is powering up!",
+        title="The Cereal Box is starting up",
         description=description,
         color=color,
     )
