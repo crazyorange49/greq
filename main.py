@@ -200,40 +200,15 @@ def slots_calculations(spins, message_authorID):
     else:
         return
 
-async def MC_Server_Proccess(interaction: discord.Interaction):
-    """Subprocess running the minecraft server"""
-    global output
-    global server_process
-    startup_script_path = os.getenv('STARTUP_PATH')
-    global server_process
-    if server_process and server_process.returncode is None:
-            await interaction.response.send_message("Oi! The server is already running or is having a critical error. Check Minecraft first, then contact the owner.")
-            print("message responded") 
-    else:
-        # Start the process
-        server_process = await asyncio.create_subprocess_exec(
-            "bash", startup_script_path,
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        await interaction.response.send_message("Server starting up. Please wait a moment.")
-
-        # Read stdout and stderr asynchronously
-        async for line in server_process.stdout:
-            print(f"STDOUT: {line.decode().strip()}")
-            output = line
-
-        async for line in server_process.stderr:
-            print(f"STDERR: {line.decode().strip()}")
-    print("message responded")
-
-
 babyYoda_memes = ["https://cdn.discordapp.com/attachments/1162221035505066084/1162223866609946664/IMG_1700.jpg?ex=653b2852&is=6528b352&hm=398ddc74ec70b33e270e55fbd7e3f5cc228b8fbab21c789fed61cc1749f6f52c&", "https://cdn.discordapp.com/attachments/1162221035505066084/1162223866257604669/IMG_1701.jpg?ex=653b2852&is=6528b352&hm=92f956ff09b973ad16096ee234ca251a99efa7350ec655c316dffbe6f3e4be7e&", "https://cdn.discordapp.com/attachments/1162221035505066084/1162223504574402570/IMG_4378.jpg?ex=653b27fc&is=6528b2fc&hm=882fac6f1c1dc1704a26a1eabaaf5f9380712dc6a6ed510edd75a583ee8024d7&", "https://images.squarespace-cdn.com/content/v1/52df0e63e4b07360a57e5bb8/1575836269357-3JO98844S7S7U6Z05XLE/Baby+Yoda+Work+.png?format=1500w", "https://hips.hearstapps.com/hmg-prod/images/baby-yoda-pope-1574183303.jpeg?crop=1xw:0.7398452611218569xh;center,top&resize=1200:*", "https://pbs.twimg.com/media/Enuta6UVEAAE4WD?format=jpg&name=900x900", "https://wkml.com/wp-content/uploads/sites/53/2019/12/Baby-Yoda-Memes-4-297x300.jpg", ]
 slots_payTable = 'BAR\tBAR\tBAR\t\tpays\t$254\nBELL\tBELL\tBELL\tpays\t$24\nPLUM\tPLUM\tPLUM\tpays\t$18\nORANGE\tORANGE\tORANGE\tpays\t$14\nCHERRY\tCHERRY\tCHERRY\t\tpays\t$11\nCHERRY\tCHERRY\t  -\t\tpays\t$9\nCHERRY\t  -\t  -\t\tpays\t$6'
 ITEMS = ["CHERRY", "LEMON", "ORANGE", "PLUM", "BELL", "BAR"]
 
-server_process = None
+minepanelBakcendURL = os.getenv('MINEPANEL_BACKEND_URL')
+minepanelUsername = os.getenv('MINEPANEL_USERNAME')
+minepanelPassword = os.getenv('MINEPANEL_PASSWORD')
+rcon_port = 25575  # Change this if your server uses a different RCON port.
+
 output = None
 global voice_channel
 voice_channel = None
@@ -279,22 +254,26 @@ async def settings(interaction: discord.Interaction,
 @tree.command(name="online")
 async def online(interaction: discord.Interaction):
     """Checks the online status of the Minecraft server and returns the list of online players."""
-    startup_script_path = os.getenv('STARTUP_PATH')
-    server_config_path = startup_script_path.replace("Startup.sh", "server.properties")
+    session = requests.Session()
+    session.post( f"{minepanelBakcendURL}/auth/login", json={"username": minepanelUsername, "password": minepanelPassword},).raise_for_status()
+    isonline = session.get(f"{minepanelBakcendURL}/servers/cerealbox/status")
+    isonline.raise_for_status()
+    isonline = isonline.json().get("status") == "running"
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
         write_file(interaction.user, '/online', interaction.guild, '/online')
         Emoji_guild = client.get_guild(938325287333154896)
-        if server_process and server_process.returncode is None:
+        if isonline:
             global output
-            server_process.stdin.write(f"list\n".encode())
-            await server_process.stdin.drain()
-            await asyncio.sleep(1)
-            output = re.sub(r'\x1b\[[0-9;]*m', '', output.decode().strip())
-            if len(output.split("players online: ")) < 2:
+            onlineList = session.post(
+            f"{minepanelBakcendURL}/servers/cerealbox/players/online",
+            json={"rconPort": rcon_port},
+            )
+            onlineList.raise_for_status()
+            number_of_players = onlineList.json().get("online")
+            players = onlineList.json().get("players")
+            if len(players) < 1:
                 await interaction.response.send_message("The server is running but no players are online.")
                 return
-            number_of_players = output.split("There are ")[1].split(" of a max")[0].strip()
-            players = output.split("players online: ")[1].strip().split(", ")
             client_emojis = Emoji_guild.emojis
             for player in players:
                     if player in [emoji.name for emoji in client_emojis]:
@@ -316,15 +295,9 @@ async def online(interaction: discord.Interaction):
                         player_emoji = discord.utils.get(client_emojis, name=player)
                         players[players.index(player)] = f"{player_emoji}{player}"
             thumbnail_url = "https://i.ibb.co/gbXqwpq9/image.png"
-            motd = ""
-            with open(server_config_path, 'r') as file:
-                data = file.readlines()
-                for line in data:
-                    if "motd=" in line:
-                        motd = line.strip().split("motd=")[1]
-                        break
-                    else:
-                        motd = "No MOTD available"
+            motd = session.get(f"{minepanelBakcendURL}/servers/cerealbox/")
+            motd.raise_for_status()
+            motd = motd.json().get("motd")
             embed_description = motd
             online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
             online_embed.set_thumbnail(url=thumbnail_url)
@@ -334,13 +307,17 @@ async def online(interaction: discord.Interaction):
         else:
             await interaction.response.send_message("The server is not running.", ephemeral=True)
         print("message responded")
+        session.close()
 
 @tree.command(name="start")
 async def start(interaction: discord.Interaction):
     """Starts the Minecraft server."""
     if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
         write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/start')
-        await MC_Server_Proccess(interaction)
+        session = requests.Session()
+        session.post( f"{minepanelBakcendURL}/auth/login", json={"username": minepanelUsername, "password": minepanelPassword},).raise_for_status()
+        session.post(f"{minepanelBakcendURL}/servers/cerealbox/start").raise_for_status()
+        session.close()
 
 @tree.command(name="ip")
 async def ip(interaction: discord.Interaction):
