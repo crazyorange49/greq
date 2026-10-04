@@ -272,9 +272,6 @@ async def online(interaction: discord.Interaction):
             onlineList.raise_for_status()
             number_of_players = onlineList.json().get("online")
             players = onlineList.json().get("players")
-            if len(players) < 1:
-                await interaction.response.send_message("The server is running but no players are online.")
-                return
             client_emojis = Emoji_guild.emojis
             for player in players:
                     if player in [emoji.name for emoji in client_emojis]:
@@ -301,6 +298,7 @@ async def online(interaction: discord.Interaction):
             motd = motd.json().get("motd")
             embed_description = motd
             online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
+            online_embed.thumbnail = discord.Embed.Empty
             online_embed.set_thumbnail(url=thumbnail_url)
             online_embed.add_field(name="Online Players", value=str(number_of_players), inline=True)
             online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
@@ -313,12 +311,53 @@ async def online(interaction: discord.Interaction):
 @tree.command(name="start")
 async def start(interaction: discord.Interaction):
     """Starts the Minecraft server."""
-    if check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
-        write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/start')
-        session = requests.Session()
-        session.post( f"{minepanelBakcendURL}/auth/login", json={"username": minepanelUsername, "password": minepanelPassword},).raise_for_status()
-        session.post(f"{minepanelBakcendURL}/servers/cerealbox/start").raise_for_status()
-        session.close()
+    if not check_channel(interaction.guild.id, interaction.channel.id, interaction.user, minecraft=True):
+        await interaction.response.send_message("Please use this command in the configured Minecraft channel.", ephemeral=True)
+        return
+
+    write_file(interaction.user, 'SLASH COMMAND', interaction.guild, '/start')
+    await interaction.response.defer()
+
+    def request_server_start():
+        with requests.Session() as session:
+            session.post(
+                f"{minepanelBakcendURL}/auth/login",
+                json={"username": minepanelUsername, "password": minepanelPassword},
+                timeout=15,
+            ).raise_for_status()
+            session.post(f"{minepanelBakcendURL}/servers/cerealbox/start", timeout=15).raise_for_status()
+            status_response = session.get(f"{minepanelBakcendURL}/servers/cerealbox/status", timeout=15)
+            status_response.raise_for_status()
+            return status_response.json().get("status", "unknown")
+
+    try:
+        server_status = await asyncio.to_thread(request_server_start)
+    except requests.RequestException:
+        print("Failed to start the Minecraft server through Minepanel.")
+        await interaction.followup.send("Minepanel couldn't start the server. please contact me.", ephemeral=True)
+        return
+
+    status_messages = {
+        "running": ("The server is online and ready for players.", discord.Color.green()),
+        "starting": ("Startup is underway. Give it a moment, then check `/online`.", discord.Color.gold()),
+        "stopped": ("The start request was accepted, but the server still reports stopped.", discord.Color.orange()),
+        "not_found": ("Minepanel couldn't find the configured server.", discord.Color.red()),
+    }
+    description, color = status_messages.get(
+        server_status,
+        ("The start request was sent. Check `/online` in a moment for the latest status.", discord.Color.gold()),
+    )
+    start_embed = discord.Embed(
+        title="Cerealbox is powering up!",
+        description=description,
+        color=color,
+    )
+    start_embed.set_thumbnail(url="https://i.ibb.co/gbXqwpq9/image.png")
+    start_embed.add_field(name="Server status", value=server_status.capitalize(), inline=True)
+    start_embed.add_field(name="Started by", value=interaction.user.mention, inline=True)
+    await interaction.followup.send(embed=start_embed)
+
+
 
 @tree.command(name="ip")
 async def ip(interaction: discord.Interaction):
