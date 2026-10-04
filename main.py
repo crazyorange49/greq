@@ -204,10 +204,6 @@ babyYoda_memes = ["https://cdn.discordapp.com/attachments/1162221035505066084/11
 slots_payTable = 'BAR\tBAR\tBAR\t\tpays\t$254\nBELL\tBELL\tBELL\tpays\t$24\nPLUM\tPLUM\tPLUM\tpays\t$18\nORANGE\tORANGE\tORANGE\tpays\t$14\nCHERRY\tCHERRY\tCHERRY\t\tpays\t$11\nCHERRY\tCHERRY\t  -\t\tpays\t$9\nCHERRY\t  -\t  -\t\tpays\t$6'
 ITEMS = ["CHERRY", "LEMON", "ORANGE", "PLUM", "BELL", "BAR"]
 
-minepanelBakcendURL = os.getenv('MINEPANEL_BACKEND_URL')
-minepanelUsername = os.getenv('MINEPANEL_USERNAME')
-minepanelPassword = os.getenv('MINEPANEL_PASSWORD')
-rcon_port = 25575  # Change this if your server uses a different RCON port.
 
 output = None
 global voice_channel
@@ -222,6 +218,11 @@ TOKEN = os.getenv('DISCORD_TOKEN')
 intents = discord.Intents.all()
 client = discord.Client(command_prefix='!', intents=intents)
 tree = app_commands.CommandTree(client)
+
+minepanelBakcendURL = os.getenv('MINEPANEL_BACKEND_URL')
+minepanelUsername = os.getenv('MINEPANEL_USERNAME')
+minepanelPassword = os.getenv('MINEPANEL_PASSWORD')
+rcon_port = 25575  # Change this if your server uses a different RCON port.
 
 @client.event
 async def on_ready():
