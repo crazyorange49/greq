@@ -325,7 +325,12 @@ async def start(interaction: discord.Interaction):
                 json={"username": minepanelUsername, "password": minepanelPassword},
                 timeout=15,
             ).raise_for_status()
-            session.post(f"{minepanelBakcendURL}/servers/cerealbox/start", timeout=15).raise_for_status()
+            isonline = session.get(f"{minepanelBakcendURL}/servers/cerealbox/status")
+            isonline.raise_for_status()
+            isonline = isonline.json().get("status") == "running"
+            if isonline:
+                return "running"
+            session.post(f"{minepanelBakcendURL}/servers/cerealbox/start", timeout=15).raise_for_status()   
             status_response = session.get(f"{minepanelBakcendURL}/servers/cerealbox/status", timeout=15)
             status_response.raise_for_status()
             return status_response.json().get("status", "unknown")
