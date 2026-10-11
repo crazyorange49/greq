@@ -298,7 +298,7 @@ async def online(interaction: discord.Interaction):
             motd = motd.json().get("motd")
             embed_description = motd
             online_embed = discord.Embed(title="Server Status", color=discord.Color.green(), description=embed_description)
-            online_embed.thumbnail = discord.Embed.Empty
+
             online_embed.set_thumbnail(url=thumbnail_url)
             online_embed.add_field(name="Online Players", value=str(number_of_players), inline=True)
             online_embed.add_field(name="Players", value='\n'.join(players) if players else "No players online", inline=True)
